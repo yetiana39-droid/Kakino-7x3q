@@ -99,10 +99,10 @@
   .chip:focus-visible { outline-color: var(--hero-fg); }
 
   /* view switcher */
-  .views { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--line); border-radius: 14px; }
-  .views button { border: 0; background: transparent; border-radius: 10px; padding: 9px 0; font-weight: 500; font-size: 14px; letter-spacing: 0.08em; cursor: pointer; color: var(--muted); min-height: 40px; }
+  .views { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--line); border-radius: 14px; }
+  .views button { border: 0; background: transparent; border-radius: 10px; padding: 9px 0; font-weight: 500; font-size: 14px; letter-spacing: 0.04em; cursor: pointer; color: var(--muted); min-height: 40px; }
   .views button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; }
-  .views.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .views.three { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
   .tabpanel { display: none; flex-direction: column; gap: 28px; }
   .tabpanel.on { display: flex; }
@@ -154,6 +154,10 @@
   .row .tag { display: inline-block; margin-left: 8px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; font-size: 11px; color: var(--muted); }
   .row .what span.memo { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
   .row .amt { color: var(--fg); }
+  .row .amt.in { color: var(--plus); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--line); border-radius: 12px; }
+  .seg button { border: 0; background: transparent; border-radius: 9px; padding: 8px 0; min-height: 40px; font-weight: 500; letter-spacing: 0.08em; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; }
 
   .cat { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 0; font-size: 14px; }
   .cat .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
@@ -191,6 +195,38 @@
   .advice-out.err { color: var(--minus); }
 
   footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
+
+  /* trend charts */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--plus); }
+  .legend i.muted { border-top-color: var(--muted); }
+  .legend i.tk { border-top-color: var(--fg); }
+  .legend i.sw { width: 10px; height: 10px; border: 0; border-radius: 2px; background: var(--plus); }
+  .chartwrap { position: relative; }
+  .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); border-radius: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.55; white-space: nowrap; z-index: 2; }
+  .tip .tt { font-size: 11px; opacity: 0.75; }
+  .tip b { font-weight: 500; font-size: 13px; }
+  .tchart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+  .tchart .g { stroke: var(--line); stroke-width: 1; }
+  .tchart .ax { fill: var(--muted); font-size: 10px; font-family: var(--font-num); }
+  .tchart .ax.r { text-anchor: end; }
+  .tchart .ax.c { text-anchor: middle; }
+  .tchart .ln { fill: none; stroke: var(--plus); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .tchart .ar { fill: var(--plus); fill-opacity: 0.1; stroke: none; }
+  .tchart .ref { stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+  .tchart .dot { fill: var(--plus); stroke: var(--surface); stroke-width: 2; }
+  .tchart .vl { fill: var(--fg); font-size: 11px; font-weight: 700; font-family: var(--font-num); }
+  .tchart .xh { stroke: var(--muted); stroke-width: 1; }
+  .tchart .bar { fill: var(--plus); opacity: 0.5; }
+  .tchart .bar.sel, .tchart .bar.hot { opacity: 1; }
+  .tchart .tk { stroke: var(--fg); stroke-width: 2; stroke-linecap: round; }
+  .tchart .ov:focus-visible, .tchart .slot:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tblwrap { overflow-x: auto; margin-top: 8px; }
+  .tblwrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tblwrap th, .tblwrap td { padding: 6px 6px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tblwrap th:first-child, .tblwrap td:first-child { text-align: left; }
+  .tblwrap th { font-weight: 500; color: var(--muted); font-size: 12px; border-top: 0; }
 
   @media (prefers-reduced-motion: reduce) { .meter > i { transition: none; } }
 
@@ -230,6 +266,7 @@
 
   <nav class="views" id="views" aria-label="表示の切り替え">
     <button type="button" data-view="record" aria-pressed="true">記録</button>
+    <button type="button" data-view="trend" aria-pressed="false">推移</button>
     <button type="button" data-view="outlook" aria-pressed="false">見通し</button>
     <button type="button" data-view="monthend" aria-pressed="false">月末</button>
     <button type="button" data-view="advice" aria-pressed="false" id="adviceTab">相談</button>
@@ -238,17 +275,18 @@
   <!-- 記録 -->
   <div class="tabpanel on" id="view-record">
     <section>
-      <h2>支払いを記録</h2>
-      <p class="hint">現金は、払うたびに入れます。クレジットカードは、引き落とされた日に引き落とし額だけ入れます。授業料などの大きな支払いは「見通し」の予定に入れます。</p>
+      <h2>出入りを記録</h2>
+      <p class="hint">現金は、払うたびに入れます。クレジットカードは、引き落とされた日に引き落とし額だけ入れます。アルバイト代などの収入は、「収入」に切り替えて入れます。授業料などの大きな支払いは「見通し」の予定に入れます。</p>
       <form class="entry card" id="entry" autocomplete="off">
+        <div class="full seg" id="typeSeg" role="group" aria-label="種別"><button type="button" data-type="out" aria-pressed="true">支出</button><button type="button" data-type="in" aria-pressed="false">収入</button></div>
         <div class="field"><label for="date">日付</label><input id="date" type="date" required></div>
         <div class="field"><label for="amount">金額(円)</label><input id="amount" class="num" type="number" inputmode="numeric" min="1" step="1" required placeholder="例: 680"></div>
-        <div class="field"><label for="pay">支払い方法</label>
+        <div class="field" id="payField"><label for="pay">支払い方法</label>
           <select id="pay"><option value="cash">現金</option><option value="card">カード引落</option></select>
         </div>
         <div class="field"><label for="cat">カテゴリ</label><select id="cat"></select></div>
         <div class="field full"><label for="memo" id="memoLabel">メモ</label><input id="memo" type="text" maxlength="80" placeholder="例: 生協で昼食"></div>
-        <div class="full"><button class="primary" type="submit">追加する</button></div>
+        <div class="full"><button class="primary" type="submit" id="entrySubmit">追加する</button></div>
       </form>
       <p id="status" class="status" role="status" aria-live="polite"></p>
     </section>
@@ -264,6 +302,30 @@
     </section>
   </div>
 
+  <!-- 推移 -->
+  <div class="tabpanel" id="view-trend">
+    <section>
+      <h2>今月のペース</h2>
+      <p class="hint">太い線は、日ごとの使った金額の累計です(現金とカード引き落とし)。細い線は、使える額を月末まで均等に使ったときのペースです。使える額は、その月の枠から、PayPayの利用額(月末に入れた分)を引いた額です。</p>
+      <div class="card">
+        <p class="note" id="paceSum" style="margin-bottom:12px"></p>
+        <div class="legend"><span><i></i>使った金額</span><span><i class="muted"></i>使える額のペース</span></div>
+        <div class="chartwrap" id="paceChart"></div>
+        <details><summary>数字で見る</summary><div class="tblwrap" id="paceTable"></div></details>
+      </div>
+    </section>
+    <section>
+      <h2>月ごとの使った金額</h2>
+      <p class="hint">棒は、現金・カード引き落とし・PayPayを合わせた使った金額です。黒い横線は、その月の枠(収入を足した額)です。選んでいる月は、濃い色で出ます。</p>
+      <div class="card">
+        <p class="note" id="monthsSum" style="margin-bottom:12px"></p>
+        <div class="legend"><span><i class="sw"></i>使った金額</span><span><i class="tk"></i>その月の枠</span></div>
+        <div class="chartwrap" id="monthsChart"></div>
+        <details><summary>数字で見る</summary><div class="tblwrap" id="monthsTable"></div></details>
+      </div>
+    </section>
+  </div>
+
   <!-- 見通し -->
   <div class="tabpanel" id="view-outlook">
     <section>
@@ -272,13 +334,14 @@
       <div class="card">
         <div class="kv"><label class="lbl" for="budget">毎月の奨学金(円)</label><input id="budget" class="inline-input num" type="number" inputmode="numeric" min="0" step="1000"></div>
         <div class="kv"><span class="lbl">学費などのための積立(毎月・自動計算)</span><strong class="num" id="reserve">¥0</strong></div>
-        <div class="kv"><span class="lbl">今月の生活費の枠</span><strong class="num" id="frame">¥0</strong></div>
+        <div class="kv"><span class="lbl">今月の収入(奨学金以外・記録から自動)</span><strong class="num" id="incomeMonth">¥0</strong></div>
+        <div class="kv"><span class="lbl">今月の生活費の枠(収入を足した額)</span><strong class="num" id="frame">¥0</strong></div>
       </div>
     </section>
 
     <section id="forecastPanel">
       <h2>マイナスにならないか</h2>
-      <p class="hint">手元のお金、毎月の奨学金、下の予定の支払いから、12か月先までの残高を計算します。生活費は毎月、枠ちょうどに使う前提です。月初に入れ直すと正確になります。</p>
+      <p class="hint">手元のお金、毎月の奨学金、下の予定の支払いから、12か月先までの残高を計算します。生活費は毎月、枠ちょうどに使う前提です。奨学金だけが毎月入るものとして計算するので、アルバイト代などの収入は、「手元のお金」に入れると反映されます。月初に入れ直すと正確になります。</p>
       <div class="card">
         <div class="kv"><label class="lbl" for="balance">今月の奨学金が入ったあとの、手元のお金(円)</label><input id="balance" class="inline-input num" type="number" inputmode="numeric" step="1" placeholder="口座と現金の合計"></div>
         <p class="note" id="fcNote" style="margin-top:12px"></p>
@@ -369,6 +432,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var CATS = ['食費', '日用品', '交通', '住居・光熱', '通信', '教材・学費', '医療', '趣味・娯楽', '交際', '衣服・美容', 'その他'];
   var CARD_CAT = 'カード';
+  var INCOME_CATS = ['アルバイト', '仕送り', '臨時収入', 'その他'];
   var PAY_LABEL = { cash: '現金', card: 'カード' };
   var MONTH_FIELDS = ['ppStart', 'ppCharge', 'ppEnd', 'stockPL'];
   var DEFAULT_BUDGET = 200000;
@@ -382,7 +446,7 @@
   function money(n) { return (n < 0 ? '−' : '') + yen.format(Math.abs(n)); }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
-  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, armed: null, armedPlan: null, view: 'record' };
+  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, armed: null, armedPlan: null, view: 'record', entryType: 'out', trendToken: 0 };
   var adapter = null;
   var armTimer = null, armPlanTimer = null;
   var statusTimers = {};
@@ -400,7 +464,8 @@
   function setView(v) {
     S.view = v;
     document.querySelectorAll('#views button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.view === v ? 'true' : 'false'); });
-    ['record', 'outlook', 'monthend', 'advice'].forEach(function (k) { $('view-' + k).className = 'tabpanel' + (k === v ? ' on' : ''); });
+    ['record', 'trend', 'outlook', 'monthend', 'advice'].forEach(function (k) { $('view-' + k).className = 'tabpanel' + (k === v ? ' on' : ''); });
+    if (v === 'trend') drawTrends();
   }
 
   /* ---------- storage adapters ---------- */
@@ -580,9 +645,11 @@
 
   function render() {
     $('monthLabel').textContent = monthLabel(S.month);
+    if (S.view === 'trend') drawTrends();
 
-    var cash = 0, card = 0, byCat = {};
+    var cash = 0, card = 0, income = 0, byCat = {};
     S.tx.forEach(function (t) {
+      if (t.type === 'in') { income += t.amount; return; }
       if (t.pay === 'card') card += t.amount; else cash += t.amount;
       byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
     });
@@ -590,7 +657,8 @@
     var ppUsage = pp.usage;
     var used = cash + card + (ppUsage || 0);
     var reserve = reserveAmount();
-    var frame = S.budget - reserve;
+    var baseFrame = S.budget - reserve;
+    var frame = baseFrame + income;
     var left = frame - used;
     if (ppUsage != null) byCat['PayPay(月末の計算)'] = ppUsage;
     var rec = S.months[S.month] || {};
@@ -616,16 +684,17 @@
     $('stCash').textContent = yen.format(cash);
     $('stCard').textContent = yen.format(card);
     $('stPP').textContent = ppUsage != null ? yen.format(ppUsage) : '未計算';
-    $('heroSub').textContent = ppUsage == null ? 'PayPayは、月末の残高を入れると反映されます。' : '';
+    $('heroSub').textContent = [income > 0 ? '今月の収入 +' + yen.format(income) + ' を、枠に足しています。' : '', ppUsage == null ? 'PayPayは、月末の残高を入れると反映されます。' : ''].filter(Boolean).join(' ');
 
     // allowance settings
     setIfIdle('budget', S.budget);
     $('reserve').textContent = yen.format(reserve);
     $('frame').textContent = money(frame);
+    $('incomeMonth').textContent = yen.format(income);
 
     // forecast
     setIfIdle('balance', S.balance);
-    var f = forecast(Math.max(0, frame));
+    var f = forecast(Math.max(0, baseFrame));
     var fn = $('fcNote'), fs = $('fcSub'), chip = $('outlookChip');
     $('fcTable').textContent = '';
     $('fcChart').textContent = '';
@@ -637,14 +706,14 @@
     } else {
       if (!f.firstNeg) {
         fn.className = 'note good';
-        fn.textContent = '今の枠(月 ' + yen.format(Math.max(0, frame)) + ')で暮らせば、12か月マイナスになりません。';
+        fn.textContent = '今の枠(月 ' + yen.format(Math.max(0, baseFrame)) + ')で暮らせば、12か月マイナスになりません。';
         fs.textContent = '一番少なくなるのは ' + monthLabel(f.minRow.m) + ' の ' + money(f.minRow.balance) + ' です。マイナスにならない生活費の上限は、月 ' + yen.format(f.lmax) + ' です。';
         chip.className = 'chip good'; chip.textContent = '12か月、マイナスにならない見通し';
       } else {
         fn.className = 'note over';
         fn.textContent = monthLabel(f.firstNeg.m) + 'に ' + yen.format(-f.firstNeg.balance) + ' 足りなくなります。';
         fs.textContent = f.lmax >= 0
-          ? '毎月の生活費を ' + yen.format(f.lmax) + ' 以下にすれば、マイナスを避けられます(今の枠は ' + yen.format(Math.max(0, frame)) + ')。'
+          ? '毎月の生活費を ' + yen.format(f.lmax) + ' 以下にすれば、マイナスを避けられます(今の枠は ' + yen.format(Math.max(0, baseFrame)) + ')。'
           : '生活費を0円にしても足りません。手元のお金があと ' + yen.format(Math.ceil(f.maxNeed0)) + ' 必要です。予定の支払いか、収入の見直しが必要です。';
         chip.className = 'chip bad'; chip.textContent = monthLabel(f.firstNeg.m) + 'に ' + yen.format(-f.firstNeg.balance) + ' 不足する見通し';
       }
@@ -737,10 +806,10 @@
         var row = el('div', 'row');
         var what = el('div', 'what');
         what.appendChild(el('b', null, t.cat));
-        what.appendChild(el('span', 'tag', PAY_LABEL[t.pay] || '現金'));
+        what.appendChild(el('span', 'tag', t.type === 'in' ? '収入' : (PAY_LABEL[t.pay] || '現金')));
         if (t.memo) what.appendChild(el('span', 'memo', t.memo));
         row.appendChild(what);
-        row.appendChild(el('span', 'amt num', '−' + yen.format(t.amount)));
+        row.appendChild(t.type === 'in' ? el('span', 'amt num in', '+' + yen.format(t.amount)) : el('span', 'amt num', '−' + yen.format(t.amount)));
         var del = el('button', 'ghost' + (S.armed === t.id ? ' armed' : ''), S.armed === t.id ? '本当に削除' : '削除');
         del.type = 'button';
         del.setAttribute('aria-label', t.cat + ' ' + yen.format(t.amount) + ' を削除');
@@ -750,6 +819,223 @@
       });
     }
   }
+
+  /* ---------- trend charts ---------- */
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function sv(name, attrs, text) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) { if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, String(attrs[k])); }
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function daysIn(m) { return new Date(Number(m.slice(0, 4)), Number(m.slice(5)), 0).getDate(); }
+  function niceStep(max, n) {
+    var raw = Math.max(max, 1) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+    return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * mag;
+  }
+  function compactYen(v) { if (v === 0) return '0'; if (v >= 10000) return (Math.round(v / 1000) / 10) + '万'; return String(v); }
+  function setTip(tip, title, rows) {
+    tip.textContent = '';
+    tip.appendChild(el('div', 'tt', title));
+    rows.forEach(function (r) {
+      var d = el('div');
+      d.appendChild(el('b', 'num', r[1]));
+      if (r[0]) d.appendChild(document.createTextNode(' ' + r[0]));
+      tip.appendChild(d);
+    });
+  }
+  function placeTip(wrap, tip, svg, vx, W) {
+    var rect = svg.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+    var px = rect.left - wr.left + vx / W * rect.width;
+    tip.hidden = false;
+    var tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(wrap.clientWidth - tw, px - tw / 2)) + 'px';
+    tip.style.top = '0px';
+  }
+  function makeTable(host, headers, rows) {
+    host.textContent = '';
+    var t = document.createElement('table');
+    var hr = document.createElement('tr');
+    headers.forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    var thead = document.createElement('thead'); thead.appendChild(hr); t.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      r.forEach(function (c, i) { tr.appendChild(el('td', i ? 'num' : null, c)); });
+      tbody.appendChild(tr);
+    });
+    t.appendChild(tbody); host.appendChild(t);
+  }
+
+  function drawPace() {
+    var host = $('paceChart'), sum = $('paceSum');
+    host.textContent = ''; $('paceTable').textContent = '';
+    var m = S.month, days = daysIn(m), todayM = todayStr().slice(0, 7), todayD = Number(todayStr().slice(8));
+    var rows = S.tx.filter(function (t) { return t.type !== 'in'; });
+    var income = 0; S.tx.forEach(function (t) { if (t.type === 'in') income += t.amount; });
+    var daily = [], i;
+    for (i = 0; i <= days; i++) daily.push(0);
+    var maxDay = 0;
+    rows.forEach(function (t) { var d = Number(t.date.slice(8)); if (d >= 1 && d <= days) { daily[d] += t.amount; if (d > maxDay) maxDay = d; } });
+    var future = m > todayM;
+    if (future && !rows.length) { sum.textContent = 'この月は、まだ始まっていません。'; host.appendChild(el('p', 'empty', '記録が入ると、ここにグラフが出ます。')); return; }
+    var lastDay = future ? maxDay : Math.max(maxDay, m === todayM ? todayD : days);
+    var pp = payPayInfo(m).usage;
+    var L = Math.max(0, S.budget - reserveAmount() + income - (pp || 0));
+    var cum = [0], d;
+    for (d = 1; d <= days; d++) cum.push(cum[d - 1] + daily[d]);
+    var spent = cum[lastDay];
+
+    var parts = [];
+    if (m === todayM) {
+      if (lastDay >= 3 && spent > 0) {
+        var proj = Math.round(spent / lastDay * days), diff = L - proj;
+        parts.push(lastDay + '日までに ' + yen.format(spent) + ' 使いました。このペースだと月末に約 ' + yen.format(proj) + ' になり、使える額 ' + yen.format(L) + ' に対して、約 ' + yen.format(Math.abs(diff)) + (diff >= 0 ? ' 余る' : ' 超える') + '見込みです。');
+      } else {
+        parts.push(lastDay + '日までに ' + yen.format(spent) + ' 使いました。使える額は ' + yen.format(L) + ' です。' + (lastDay < 3 ? '月の初めは、ペースの予測を出しません。' : ''));
+      }
+    } else {
+      parts.push(monthLabel(m) + 'は ' + yen.format(spent) + ' 使いました(使える額 ' + yen.format(L) + ')。' + (spent <= L ? '範囲内でした。' : yen.format(spent - L) + ' 超えていました。'));
+    }
+    if (pp == null) parts.push('PayPayは、月末の残高を入れると、使える額に反映されます。');
+    sum.textContent = parts.join('');
+
+    var W = 360, H = 214, ml = 40, mr = 14, mt = 16, mb = 30, pw = W - ml - mr, ph = H - mt - mb;
+    var maxv = Math.max(L, spent, 1), step = niceStep(maxv, 4), ymax = step * Math.ceil(maxv / step);
+    var X = function (v) { return ml + v / days * pw; }, Y = function (v) { return mt + ph - v / ymax * ph; };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'tchart', role: 'img', 'aria-label': monthLabel(m) + 'の、日ごとの使った金額の累計と、使える額のペース。詳しい数字は、下の「数字で見る」にあります。' });
+    var v;
+    for (v = 0; v <= ymax + 1; v += step) {
+      svg.appendChild(sv('line', { x1: ml, x2: W - mr, y1: Y(v), y2: Y(v), 'class': 'g' }));
+      svg.appendChild(sv('text', { x: ml - 6, y: Y(v) + 3.5, 'class': 'ax r' }, compactYen(v)));
+    }
+    var ticks = [1, 5, 10, 15, 20, 25];
+    if (days - 25 >= 3) ticks.push(days);
+    ticks.forEach(function (t) { if (t <= days) svg.appendChild(sv('text', { x: X(t), y: H - 10, 'class': 'ax c' }, t + '日')); });
+
+    svg.appendChild(sv('line', { x1: X(0), y1: Y(0), x2: X(days), y2: Y(L), 'class': 'ref' }));
+    var pts = ['M' + X(0).toFixed(1) + ' ' + Y(0).toFixed(1)];
+    for (d = 1; d <= lastDay; d++) pts.push('L' + X(d).toFixed(1) + ' ' + Y(cum[d]).toFixed(1));
+    svg.appendChild(sv('path', { d: pts.join(' ') + ' L' + X(lastDay).toFixed(1) + ' ' + Y(0).toFixed(1) + ' Z', 'class': 'ar' }));
+    svg.appendChild(sv('path', { d: pts.join(' '), 'class': 'ln' }));
+    var ex = X(lastDay), ey = Y(spent);
+    svg.appendChild(sv('circle', { cx: ex, cy: ey, r: 4.5, 'class': 'dot' }));
+    svg.appendChild(sv('text', { x: ex, y: Math.max(ey - 10, 11), 'class': 'vl', 'text-anchor': ex > W - 60 ? 'end' : ex < ml + 40 ? 'start' : 'middle' }, yen.format(spent)));
+
+    var xh = sv('line', { y1: mt, y2: mt + ph, 'class': 'xh' }); xh.style.display = 'none'; svg.appendChild(xh);
+    var hd = sv('circle', { r: 4.5, 'class': 'dot' }); hd.style.display = 'none'; svg.appendChild(hd);
+    var tip = el('div', 'tip'); tip.hidden = true;
+    var cur = Math.max(1, lastDay);
+    function show(day) {
+      day = Math.max(1, Math.min(days, day)); cur = day;
+      xh.setAttribute('x1', X(day)); xh.setAttribute('x2', X(day)); xh.style.display = '';
+      var rs = [];
+      if (day <= lastDay) { hd.setAttribute('cx', X(day)); hd.setAttribute('cy', Y(cum[day])); hd.style.display = ''; rs.push(['使った金額', yen.format(cum[day])]); }
+      else hd.style.display = 'none';
+      rs.push(['使える額のペース', yen.format(Math.round(L * day / days))]);
+      setTip(tip, Number(m.slice(5)) + '月' + day + '日', rs);
+      placeTip(host, tip, svg, X(day), W);
+    }
+    function hide() { xh.style.display = 'none'; hd.style.display = 'none'; tip.hidden = true; }
+    var ov = sv('rect', { x: ml, y: mt, width: pw, height: ph, fill: 'transparent', tabindex: '0', 'class': 'ov', 'aria-label': '日ごとの数字を見ます。左右の矢印キーで日付を動かせます。' });
+    var move = function (e) { var r = svg.getBoundingClientRect(); show(Math.round(((e.clientX - r.left) / r.width * W - ml) / pw * days)); };
+    ov.addEventListener('pointermove', move);
+    ov.addEventListener('pointerdown', move);
+    ov.addEventListener('pointerleave', hide);
+    ov.addEventListener('focus', function () { show(cur); });
+    ov.addEventListener('blur', hide);
+    ov.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); show(cur - 1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); show(cur + 1); }
+    });
+    svg.appendChild(ov);
+    host.appendChild(svg); host.appendChild(tip);
+
+    var trs = [];
+    for (d = 1; d <= days; d++) {
+      if (daily[d] > 0 || d === lastDay) trs.push([Number(m.slice(5)) + '月' + d + '日', yen.format(daily[d]), d <= lastDay ? yen.format(cum[d]) : '', yen.format(Math.round(L * d / days))]);
+    }
+    makeTable($('paceTable'), ['日付', 'その日の合計', '累計', 'ペースの目安'], trs);
+  }
+
+  async function drawMonths() {
+    var token = ++S.trendToken;
+    var host = $('monthsChart'), sum = $('monthsSum');
+    var list = [], i, j;
+    for (i = 5; i >= 0; i--) list.push(shiftMonth(S.month, -i));
+    var data = [];
+    for (j = 0; j < list.length; j++) {
+      var m = list[j], rows;
+      if (m === S.month) rows = S.tx;
+      else { try { rows = await adapter.getMonth(m); } catch (e) { rows = []; } }
+      if (token !== S.trendToken) return;
+      var s = sumRows(rows), pu = payPayInfo(m).usage;
+      data.push({ m: m, used: s.cash + s.card + (pu || 0), has: s.count > 0 || pu != null, frame: S.budget - reserveAmount() + s.income });
+    }
+    host.textContent = ''; $('monthsTable').textContent = '';
+    if (!data.some(function (x) { return x.has; })) { sum.textContent = ''; host.appendChild(el('p', 'empty', '記録が入ると、ここに月ごとのグラフが出ます。')); return; }
+
+    var cur = data[data.length - 1], prev = data[data.length - 2], parts = [];
+    var partial = S.month === todayStr().slice(0, 7);
+    if (cur.has) parts.push(monthLabel(cur.m) + 'は ' + yen.format(cur.used) + '(枠 ' + yen.format(cur.frame) + ')。' + (partial ? '今月は、まだ途中です。' : ''));
+    if (cur.has && prev.has && !partial) { var dl = cur.used - prev.used; parts.push('前の月より ' + yen.format(Math.abs(dl)) + (dl > 0 ? ' 多い' : ' 少ない') + 'です。'); }
+    var rec = data.filter(function (x) { return x.has; }), over = rec.filter(function (x) { return x.used > x.frame; }).length;
+    parts.push('記録のある ' + rec.length + ' か月のうち、枠を超えたのは ' + over + ' か月です。');
+    sum.textContent = parts.join('');
+
+    var W = 360, H = 200, ml = 40, mr = 8, mt = 22, mb = 40, pw = W - ml - mr, ph = H - mt - mb;
+    var maxv = 1;
+    data.forEach(function (x, k) { if (x.has) maxv = Math.max(maxv, x.used); if (x.has || k === data.length - 1) maxv = Math.max(maxv, x.frame); });
+    var step = niceStep(maxv, 4), ymax = step * Math.ceil(maxv / step);
+    var Y = function (v) { return mt + ph - v / ymax * ph; };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'tchart', role: 'img', 'aria-label': '直近6か月の、月ごとの使った金額と、その月の枠。詳しい数字は、下の「数字で見る」にあります。' });
+    var v;
+    for (v = 0; v <= ymax + 1; v += step) {
+      svg.appendChild(sv('line', { x1: ml, x2: W - mr, y1: Y(v), y2: Y(v), 'class': 'g' }));
+      svg.appendChild(sv('text', { x: ml - 6, y: Y(v) + 3.5, 'class': 'ax r' }, compactYen(v)));
+    }
+    var slot = pw / data.length, bw = Math.min(24, slot * 0.5), base = Y(0);
+    var tip = el('div', 'tip'); tip.hidden = true;
+    var bars = [];
+    data.forEach(function (x, k) {
+      var cx = ml + k * slot + slot / 2, bx = cx - bw / 2, isSel = k === data.length - 1;
+      var top = base;
+      if (x.has) {
+        var h = Math.max(2, base - Y(x.used)), r = Math.min(4, h / 2);
+        top = base - h;
+        var bar = sv('path', { d: 'M' + bx + ' ' + base + ' V' + (top + r) + ' a' + r + ' ' + r + ' 0 0 1 ' + r + ' -' + r + ' H' + (bx + bw - r) + ' a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + ' V' + base + ' Z', 'class': 'bar' + (isSel ? ' sel' : '') });
+        svg.appendChild(bar); bars.push(bar);
+      } else bars.push(null);
+      var tickY = null;
+      if (x.has || isSel) { tickY = Y(x.frame); svg.appendChild(sv('line', { x1: cx - bw / 2 - 7, x2: cx + bw / 2 + 7, y1: tickY, y2: tickY, 'class': 'tk' })); }
+      if (isSel && x.has) svg.appendChild(sv('text', { x: cx, y: Math.max(Math.min(top, tickY == null ? top : tickY) - 7, 11), 'class': 'vl', 'text-anchor': 'middle' }, yen.format(x.used)));
+      svg.appendChild(sv('text', { x: cx, y: H - 22, 'class': 'ax c' }, Number(x.m.slice(5)) + '月'));
+      if (k === 0 || x.m.slice(5) === '01') svg.appendChild(sv('text', { x: cx, y: H - 9, 'class': 'ax c' }, x.m.slice(0, 4) + '年'));
+    });
+    data.forEach(function (x, k) {
+      var cx = ml + k * slot + slot / 2;
+      var diff = x.frame - x.used;
+      var label = monthLabel(x.m) + (x.has ? '、使った金額 ' + yen.format(x.used) + '、枠 ' + yen.format(x.frame) : '、記録なし');
+      var hit = sv('rect', { x: ml + k * slot, y: mt, width: slot, height: H - mt, fill: 'transparent', tabindex: '0', 'class': 'slot', 'aria-label': label });
+      var on = function () {
+        bars.forEach(function (b) { if (b) b.classList.remove('hot'); });
+        if (bars[k]) bars[k].classList.add('hot');
+        if (x.has) setTip(tip, monthLabel(x.m), [['使った金額', yen.format(x.used)], ['その月の枠', yen.format(x.frame)], [diff >= 0 ? '枠まで余り' : '枠を超えた額', yen.format(Math.abs(diff))]]);
+        else setTip(tip, monthLabel(x.m), [['', '記録なし']]);
+        placeTip(host, tip, svg, cx, W);
+      };
+      var off = function () { if (bars[k]) bars[k].classList.remove('hot'); tip.hidden = true; };
+      hit.addEventListener('pointerenter', on); hit.addEventListener('pointerdown', on);
+      hit.addEventListener('pointerleave', off); hit.addEventListener('focus', on); hit.addEventListener('blur', off);
+      svg.appendChild(hit);
+    });
+    host.appendChild(svg); host.appendChild(tip);
+    makeTable($('monthsTable'), ['月', '使った金額', 'その月の枠', '差'], data.map(function (x) {
+      return x.has ? [monthLabel(x.m), yen.format(x.used), yen.format(x.frame), (x.frame - x.used >= 0 ? '余り ' : '超過 ') + yen.format(Math.abs(x.frame - x.used))] : [monthLabel(x.m), '記録なし', '', ''];
+    }));
+  }
+
+  function drawTrends() { drawPace(); drawMonths(); }
 
   /* ---------- actions ---------- */
   function onDelete(id) {
@@ -781,11 +1067,15 @@
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   function fillCats() {
+    var inc = S.entryType === 'in';
     var pay = $('pay').value;
     var sel = $('cat'); sel.textContent = '';
-    (pay === 'card' ? [CARD_CAT] : CATS).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
-    $('memoLabel').textContent = pay === 'card' ? 'メモ(カード名など)' : 'メモ';
-    $('memo').placeholder = pay === 'card' ? '例: 楽天カード' : '例: 生協で昼食';
+    (inc ? INCOME_CATS : pay === 'card' ? [CARD_CAT] : CATS).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    $('payField').hidden = inc;
+    $('memoLabel').textContent = inc ? 'メモ(入金元など)' : pay === 'card' ? 'メモ(カード名など)' : 'メモ';
+    $('memo').placeholder = inc ? '例: 10月分のバイト代' : pay === 'card' ? '例: 楽天カード' : '例: 生協で昼食';
+    $('entrySubmit').textContent = inc ? '収入を追加する' : '追加する';
+    document.querySelectorAll('#typeSeg button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.type === S.entryType ? 'true' : 'false'); });
   }
 
   function defaultDate() {
@@ -825,7 +1115,7 @@
     if (!S.tx.length && pp.usage == null && !isNum(rec.stockPL)) { setStatus('この月にはまだ記録がありません。', true); return; }
     var rows = [['日付', '区分', '支払い方法', 'カテゴリ', '金額', 'メモ']];
     S.tx.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); })
-      .forEach(function (t) { rows.push([t.date, '支出', PAY_LABEL[t.pay] || '現金', t.cat, t.amount, t.memo]); });
+      .forEach(function (t) { rows.push([t.date, t.type === 'in' ? '収入' : '支出', t.type === 'in' ? '' : (PAY_LABEL[t.pay] || '現金'), t.cat, t.amount, t.memo]); });
     if (pp.usage != null) rows.push([S.month, '月末計算', 'PayPay', 'PayPay利用額', pp.usage, '月初 ' + pp.start + ' + チャージ ' + pp.charge + ' − 月末 ' + pp.end]);
     if (isNum(rec.stockPL)) rows.push([S.month, '月末記録', '楽天証券', '損益', rec.stockPL, '枠や見通しの計算には含めない']);
     var csv = '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
@@ -836,12 +1126,14 @@
 
   /* ---------- Claude advice ---------- */
   function sumRows(rows) {
-    var cash = 0, card = 0, byCat = {};
+    var cash = 0, card = 0, income = 0, byCat = {}, count = 0;
     rows.forEach(function (t) {
+      if (t.type === 'in') { income += t.amount; return; }
+      count++;
       if (t.pay === 'card') card += t.amount; else cash += t.amount;
       byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
     });
-    return { cash: cash, card: card, byCat: byCat, count: rows.length };
+    return { cash: cash, card: card, income: income, byCat: byCat, count: count };
   }
 
   async function historyText() {
@@ -872,7 +1164,7 @@
     return [
       '毎月の奨学金: ' + S.budget + '円',
       '学費などのための毎月の積立(自動計算): ' + reserve + '円',
-      '今月の生活費の枠: ' + frame + '円',
+      '毎月の生活費の枠(今月の収入は含めない): ' + frame + '円',
       '手元のお金(奨学金が入ったあと): ' + (isNum(S.balance) ? S.balance + '円(' + monthLabel(forecastStart()) + 'の時点)' : '未入力'),
       '学費・大きな支払いの予定:',
       plans,
@@ -885,11 +1177,11 @@
     var cur = sumRows(S.tx), byCat = cur.byCat;
     var pp = payPayInfo(S.month);
     var used = cur.cash + cur.card + (pp.usage || 0);
-    var frame = S.budget - reserveAmount();
+    var frame = S.budget - reserveAmount() + cur.income;
     var catLines = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; })
       .map(function (c) { return '・' + c + ': ' + byCat[c] + '円'; }).join('\n') || '(まだ記録なし)';
     var txLines = S.tx.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); })
-      .slice(-60).map(function (t) { return t.date + ' ' + (PAY_LABEL[t.pay] || '現金') + ' ' + t.cat + ' ' + t.amount + '円' + (t.memo ? '(' + t.memo + ')' : ''); }).join('\n') || '(まだ記録なし)';
+      .slice(-60).map(function (t) { return t.date + ' ' + (t.type === 'in' ? '収入' : (PAY_LABEL[t.pay] || '現金')) + ' ' + t.cat + ' ' + (t.type === 'in' ? '+' : '') + t.amount + '円' + (t.memo ? '(' + t.memo + ')' : ''); }).join('\n') || '(まだ記録なし)';
     var now = todayStr();
     var dim = new Date(Number(S.month.slice(0, 4)), Number(S.month.slice(5)), 0).getDate();
     var timing = now.slice(0, 7) === S.month
@@ -907,6 +1199,7 @@
       '・金額は、下のデータにある数字を使って具体的に書く。データに無いことは、推測だと断る。',
       '・記録されているのは現金とカード引き落としだけで、PayPayは月末の残高から計算した合計だけ。カードは引き落とし額のみなので、中身の内訳は分からない。',
       '・投資(楽天証券)の売買や商品の選び方は勧めない。',
+      '・収入(アルバイト代など)がある月は、枠に足して考える。収入に頼った提案はしない。',
       '・記録がまだ少ないときは、そう伝えたうえで、記録のつけ方についてのアドバイスを中心にする。',
       '',
       '学費・見通し:',
@@ -916,6 +1209,7 @@
       '対象の月: ' + monthLabel(S.month),
       timing,
       '現金: ' + cur.cash + '円 / カード引き落とし: ' + cur.card + '円 / PayPay: ' + (pp.usage != null ? pp.usage + '円' : 'まだ未計算'),
+      '今月の収入(奨学金以外): ' + cur.income + '円(枠に足している)',
       '使った合計: ' + used + '円(枠 ' + frame + '円に対して、残り ' + (frame - used) + '円)',
       '',
       'カテゴリ別(現金とカード引き落とし):',
@@ -1004,6 +1298,7 @@
     $('prev').addEventListener('click', function () { goMonth(shiftMonth(S.month, -1)); });
     $('next').addEventListener('click', function () { goMonth(shiftMonth(S.month, 1)); });
     $('pay').addEventListener('change', fillCats);
+    document.querySelectorAll('#typeSeg button').forEach(function (b) { b.addEventListener('click', function () { S.entryType = b.dataset.type; fillCats(); }); });
 
     $('entry').addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -1011,10 +1306,11 @@
       var date = $('date').value;
       if (!date) { setStatus('日付を入れてください。', true); return; }
       if (!(amount > 0)) { setStatus('金額は1円以上で入れてください。', true); $('amount').focus(); return; }
-      var pay = $('pay').value;
-      var t = { id: newId(), date: date, month: date.slice(0, 7), pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
+      var isIn = S.entryType === 'in';
+      var pay = isIn ? 'in' : $('pay').value;
+      var t = { id: newId(), date: date, month: date.slice(0, 7), type: isIn ? 'in' : 'out', pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
       adapter.add(t).then(function () {
-        setStatus((pay === 'card' ? 'カード引き落としを' : '現金の支出を') + '追加しました。');
+        setStatus(isIn ? '収入を追加しました。' : (pay === 'card' ? 'カード引き落としを' : '現金の支出を') + '追加しました。');
       }).catch(function () { setStatus('保存できませんでした。もう一度試してください。', true); });
       $('amount').value = ''; $('memo').value = '';
       if (t.month !== S.month) goMonth(t.month);
