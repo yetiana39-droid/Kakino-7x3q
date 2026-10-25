@@ -1,5 +1,5 @@
 // Offline support: the app files are served from the cache and refreshed in the background.
-const CACHE = 'kakeibo-v1';
+const CACHE = 'kakeibo-v6';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
