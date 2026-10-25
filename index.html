@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0F4A40">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@700&display=swap">
+<title>家計簿</title>
+<style>
+  /* Layout: a deep-pine hero at the top answers "how much can I still spend this month"; four views (記録 / 見通し / 月末 / 相談) sit below it on flat sections, with cards only where input happens. */
+  :root {
+    --bg: #EDF0EE;
+    --surface: #FAFBFA;
+    --field: #EDF0EE;
+    --fg: #14201C;
+    --muted: #62726B;
+    --line: #D3DAD6;
+    --accent: #0F4A40;
+    --accent-fg: #F2FAF7;
+    --plus: #0B6B58;
+    --minus: #BF3A22;
+    --bar-pos: #7FB5A7;
+    --hero-bg: #0F4A40;
+    --hero-fg: #F2FAF7;
+    --hero-sub: #A9CBC1;
+    --hero-track: rgba(255, 255, 255, 0.18);
+    --hero-fill: #8FE0C9;
+    --hero-warn: #FFB09C;
+    --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    --font-display: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1311; --surface: #151D1A; --field: #1D2723; --fg: #E5EDE9; --muted: #92A39B; --line: #27332E;
+      --accent: #7ED6C0; --accent-fg: #0A1411; --plus: #6FD0BA; --minus: #F08A72; --bar-pos: #3E8173;
+      --hero-bg: #153F38; --hero-fg: #EAF6F2; --hero-sub: #9CC2B8; --hero-track: rgba(255, 255, 255, 0.14); --hero-fill: #7ED6C0; --hero-warn: #FFAE98;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1311; --surface: #151D1A; --field: #1D2723; --fg: #E5EDE9; --muted: #92A39B; --line: #27332E;
+    --accent: #7ED6C0; --accent-fg: #0A1411; --plus: #6FD0BA; --minus: #F08A72; --bar-pos: #3E8173;
+    --hero-bg: #153F38; --hero-fg: #EAF6F2; --hero-sub: #9CC2B8; --hero-track: rgba(255, 255, 255, 0.14); --hero-fill: #7ED6C0; --hero-warn: #FFAE98;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.65;
+    padding-block: 20px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* header */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin: 0; letter-spacing: 0.12em; }
+  .monthnav { display: flex; align-items: center; gap: 2px; }
+  .monthnav button { width: 40px; height: 40px; border: 0; background: transparent; border-radius: 20px; cursor: pointer; font-size: 26px; line-height: 1; color: var(--muted); }
+  .monthnav button:hover { background: var(--line); }
+  .monthnav output { min-width: 6.5em; text-align: center; font-weight: 700; font-size: 16px; letter-spacing: 0.04em; }
+
+  /* hero */
+  .hero { background: var(--hero-bg); color: var(--hero-fg); border-radius: 20px; padding: 22px 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .hero .eyebrow { font-size: 12px; letter-spacing: 0.16em; color: var(--hero-sub); }
+  .hero .big { font-family: var(--font-display); font-weight: 700; font-size: clamp(40px, 12vw, 56px); line-height: 1.1; margin: 0; overflow-wrap: anywhere; letter-spacing: 0.01em; }
+  .hero .big.over { color: var(--hero-warn); }
+  .hero .cap { font-size: 14px; color: var(--hero-sub); margin: 0; }
+  .meter { height: 6px; border-radius: 3px; background: var(--hero-track); overflow: hidden; }
+  .meter > i { display: block; height: 100%; background: var(--hero-fill); border-radius: 3px; transition: width 0.4s ease; }
+  .meter.over > i { background: var(--hero-warn); }
+  .hero .note { font-size: 14px; margin: 0; }
+  .hero .note.over { color: var(--hero-warn); font-weight: 700; }
+  .hero .subnote { font-size: 12px; color: var(--hero-sub); margin: 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--hero-track); padding-top: 12px; }
+  .stats div { padding-right: 8px; min-width: 0; }
+  .stats div + div { padding-left: 12px; border-left: 1px solid var(--hero-track); }
+  .stats span { display: block; font-size: 11px; letter-spacing: 0.1em; color: var(--hero-sub); }
+  .stats strong { display: block; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+
+  .chip { align-self: flex-start; border: 1px solid var(--hero-track); background: transparent; color: var(--hero-fg); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; text-align: left; }
+  .chip::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 4px; margin-right: 8px; background: var(--hero-sub); }
+  .chip.good::before { background: var(--hero-fill); }
+  .chip.bad { border-color: var(--hero-warn); }
+  .chip.bad::before { background: var(--hero-warn); }
+  .chip:focus-visible { outline-color: var(--hero-fg); }
+
+  /* view switcher */
+  .views { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--line); border-radius: 14px; }
+  .views button { border: 0; background: transparent; border-radius: 10px; padding: 9px 0; font-weight: 500; font-size: 14px; letter-spacing: 0.08em; cursor: pointer; color: var(--muted); min-height: 40px; }
+  .views button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; }
+  .views.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .tabpanel { display: none; flex-direction: column; gap: 28px; }
+  .tabpanel.on { display: flex; }
+
+  /* sections */
+  h2 { font-family: var(--font-display); font-size: 19px; font-weight: 700; margin: 0 0 4px; letter-spacing: 0.06em; }
+  h3 { font-size: 13px; margin: 0 0 8px; letter-spacing: 0.08em; }
+  .hint { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .card { background: var(--surface); border-radius: 16px; padding: 16px; }
+  .row-between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .lbl, label.lbl { font-size: 13px; color: var(--muted); }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .kv:first-of-type { border-top: 0; }
+  .kv strong { font-weight: 500; font-size: 17px; }
+
+  .note { font-size: 14px; margin: 0; }
+  .note.over { color: var(--minus); font-weight: 700; }
+  .note.good { color: var(--plus); font-weight: 700; }
+  .note.sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+
+  /* forms */
+  form.entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+  form.entry .full { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field label { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+  .field input[type="date"], .field input[type="month"], .field input[type="number"], .field input[type="text"], .field select, .inline-input {
+    width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; background: var(--field); min-height: 44px;
+  }
+  .field input:focus, .field select:focus, .inline-input:focus { border-color: var(--accent); outline: none; }
+  .inline-input { width: 11em; text-align: right; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 44px; color: var(--fg); }
+  .check input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .primary { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; min-height: 48px; width: 100%; }
+  .advice-q .primary { width: auto; }
+  .ghost { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; color: var(--muted); min-height: 32px; }
+  .ghost.armed { border-color: var(--minus); color: var(--minus); font-weight: 700; }
+  .ghost.wide { padding: 10px 14px; min-height: 44px; text-align: left; color: var(--fg); }
+  .status { min-height: 1.6em; font-size: 14px; margin: 8px 0 0; }
+  .status.err { color: var(--minus); }
+
+  /* lists */
+  .empty { color: var(--muted); margin: 0; font-size: 14px; }
+  .day { margin: 18px 0 0; }
+  .day:first-child { margin-top: 0; }
+  .day h3 { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.1em; margin: 0 0 2px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row .what { min-width: 0; }
+  .row .what b { font-weight: 500; }
+  .row .tag { display: inline-block; margin-left: 8px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; font-size: 11px; color: var(--muted); }
+  .row .what span.memo { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .row .amt { color: var(--fg); }
+
+  .cat { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 0; font-size: 14px; }
+  .cat .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .cat .bar i { display: block; height: 100%; background: var(--bar-pos); border-radius: 4px; }
+  .cat .amt { text-align: right; font-size: 13px; }
+  .cat .amt small { color: var(--muted); margin-left: 6px; }
+
+  /* outlook */
+  .chart { width: 100%; height: auto; display: block; margin-top: 12px; }
+  .chart .zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .pos { fill: var(--bar-pos); }
+  .chart .neg { fill: var(--minus); }
+  .chart .axis { fill: var(--muted); font-size: 10px; text-anchor: middle; font-family: var(--font-num); }
+  .chart .vlabel { fill: var(--fg); font-size: 11px; font-weight: 700; text-anchor: middle; font-family: var(--font-num); }
+  .caption { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); letter-spacing: 0.06em; min-height: 32px; }
+  .fc-row { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .fc-row.head { border-top: 0; font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+  .fc-row .pl { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .fc-row .bal { text-align: right; }
+  .fc-row .bal.neg { color: var(--minus); font-weight: 700; }
+  .plan-actions { margin: 4px 0 16px; }
+
+  /* month end */
+  .me-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .me-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .calc { margin: 0; font-size: 14px; }
+  .calc.sub { font-size: 13px; color: var(--muted); }
+
+  /* advice */
+  .advice-q { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  .advice-q .field { flex: 1 1 14em; }
+  .advice-out { margin: 14px 0 0; padding: 14px; border-radius: 12px; background: var(--field); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.9; }
+  .advice-out.err { color: var(--minus); }
+
+  footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .meter > i { transition: none; } }
+
+  /* standalone page basics */
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; }
+  input, select { font-size: 16px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>家計簿</h1>
+    <div class="monthnav">
+      <button type="button" id="prev" aria-label="前の月">‹</button>
+      <output id="monthLabel" class="num" aria-live="polite"></output>
+      <button type="button" id="next" aria-label="次の月">›</button>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="今月の枠">
+    <span class="eyebrow">今月の枠の残り</span>
+    <p class="big num" id="heroLeft">¥0</p>
+    <p class="cap" id="heroCap"></p>
+    <div class="meter" id="meter" role="presentation"><i id="meterFill" style="width:0%"></i></div>
+    <p class="note" id="allowNote"></p>
+    <div class="stats">
+      <div><span>現金</span><strong class="num" id="stCash">¥0</strong></div>
+      <div><span>カード</span><strong class="num" id="stCard">¥0</strong></div>
+      <div><span>PayPay</span><strong class="num" id="stPP">未計算</strong></div>
+    </div>
+    <p class="subnote" id="heroSub"></p>
+    <button type="button" class="chip" id="outlookChip"></button>
+  </section>
+
+  <nav class="views" id="views" aria-label="表示の切り替え">
+    <button type="button" data-view="record" aria-pressed="true">記録</button>
+    <button type="button" data-view="outlook" aria-pressed="false">見通し</button>
+    <button type="button" data-view="monthend" aria-pressed="false">月末</button>
+    <button type="button" data-view="advice" aria-pressed="false" id="adviceTab">相談</button>
+  </nav>
+
+  <!-- 記録 -->
+  <div class="tabpanel on" id="view-record">
+    <section>
+      <h2>支払いを記録</h2>
+      <p class="hint">現金は、払うたびに入れます。クレジットカードは、引き落とされた日に引き落とし額だけ入れます。授業料などの大きな支払いは「見通し」の予定に入れます。</p>
+      <form class="entry card" id="entry" autocomplete="off">
+        <div class="field"><label for="date">日付</label><input id="date" type="date" required></div>
+        <div class="field"><label for="amount">金額(円)</label><input id="amount" class="num" type="number" inputmode="numeric" min="1" step="1" required placeholder="例: 680"></div>
+        <div class="field"><label for="pay">支払い方法</label>
+          <select id="pay"><option value="cash">現金</option><option value="card">カード引落</option></select>
+        </div>
+        <div class="field"><label for="cat">カテゴリ</label><select id="cat"></select></div>
+        <div class="field full"><label for="memo" id="memoLabel">メモ</label><input id="memo" type="text" maxlength="80" placeholder="例: 生協で昼食"></div>
+        <div class="full"><button class="primary" type="submit">追加する</button></div>
+      </form>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section>
+      <h2>今月の使い道</h2>
+      <div id="breakdown"></div>
+    </section>
+
+    <section>
+      <h2>記録の一覧</h2>
+      <div id="list"></div>
+    </section>
+  </div>
+
+  <!-- 見通し -->
+  <div class="tabpanel" id="view-outlook">
+    <section>
+      <h2>毎月の枠</h2>
+      <p class="hint">奨学金から、学費などのための積立を引いた残りが、毎月の生活費の枠です。</p>
+      <div class="card">
+        <div class="kv"><label class="lbl" for="budget">毎月の奨学金(円)</label><input id="budget" class="inline-input num" type="number" inputmode="numeric" min="0" step="1000"></div>
+        <div class="kv"><span class="lbl">学費などのための積立(毎月・自動計算)</span><strong class="num" id="reserve">¥0</strong></div>
+        <div class="kv"><span class="lbl">今月の生活費の枠</span><strong class="num" id="frame">¥0</strong></div>
+      </div>
+    </section>
+
+    <section id="forecastPanel">
+      <h2>マイナスにならないか</h2>
+      <p class="hint">手元のお金、毎月の奨学金、下の予定の支払いから、12か月先までの残高を計算します。生活費は毎月、枠ちょうどに使う前提です。月初に入れ直すと正確になります。</p>
+      <div class="card">
+        <div class="kv"><label class="lbl" for="balance">今月の奨学金が入ったあとの、手元のお金(円)</label><input id="balance" class="inline-input num" type="number" inputmode="numeric" step="1" placeholder="口座と現金の合計"></div>
+        <p class="note" id="fcNote" style="margin-top:12px"></p>
+        <p class="note sub" id="fcSub"></p>
+        <div id="fcChart"></div>
+        <p class="caption" id="fcCaption" hidden>棒は、その月の終わりの残高です。点線が0円で、赤い棒がマイナスの月です。</p>
+        <details id="fcDetails" hidden>
+          <summary>月ごとの数字を見る</summary>
+          <div id="fcTable"></div>
+        </details>
+      </div>
+    </section>
+
+    <section id="plansPanel">
+      <h2>学費・大きな支払いの予定</h2>
+      <p class="hint">授業料、教科書、実習費、帰省の交通費など、まとまって出ていくお金を入れます。「毎年くり返す」を選ぶと、同じ月に毎年かかる前提で計算します。金額が変わったときは、削除して入れ直してください。</p>
+      <div id="planList"></div>
+      <div class="plan-actions"><button type="button" class="ghost wide" id="addTuition" hidden>半期の授業料を、5月と11月の2回に入れる(先に下の金額に半期分を入力)</button></div>
+      <form class="entry card" id="planForm" autocomplete="off">
+        <div class="field"><label for="planName">名前</label><input id="planName" type="text" maxlength="40" required placeholder="例: 教科書代"></div>
+        <div class="field"><label for="planAmount">金額(円)</label><input id="planAmount" class="num" type="number" inputmode="numeric" min="1" step="1" required></div>
+        <div class="field"><label for="planMonth">支払う月</label><input id="planMonth" type="month" required></div>
+        <div class="field"><span class="lbl" style="visibility:hidden">くり返し</span><label class="check" for="planRepeat"><input id="planRepeat" type="checkbox"> 毎年くり返す</label></div>
+        <div class="full"><button class="primary" type="submit">予定に追加する</button></div>
+      </form>
+      <p id="planStatus" class="status" role="status" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <!-- 月末 -->
+  <div class="tabpanel" id="view-monthend">
+    <section>
+      <h2>月末の記録</h2>
+      <p class="hint">PayPayと楽天証券は、月末にまとめて入れます。PayPayは、月初の残高とチャージ合計、月末の残高から、今月の利用額を計算します。</p>
+      <div class="me-grid">
+        <div class="card me-card">
+          <h3>PayPay</h3>
+          <div class="field"><label for="ppStart">月初の残高(円)</label><input id="ppStart" class="num" type="number" inputmode="numeric" step="1"></div>
+          <div class="field"><label for="ppCharge">今月のチャージ合計(円)</label><input id="ppCharge" class="num" type="number" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+          <div class="field"><label for="ppEnd">月末の残高(円)</label><input id="ppEnd" class="num" type="number" inputmode="numeric" step="1"></div>
+          <p class="calc" id="ppCalc"></p>
+          <p class="calc sub" id="ppSub"></p>
+        </div>
+        <div class="card me-card">
+          <h3>楽天証券</h3>
+          <div class="field"><label for="stockPL">今月の損益(円・マイナスは−を付ける)</label><input id="stockPL" class="num" type="number" inputmode="numeric" step="1" placeholder="例: -12000"></div>
+          <p class="calc" id="stockMonth"></p>
+          <p class="calc" id="stockCalc"></p>
+          <p class="calc sub">投資の損益は、枠や見通しの計算には入れていません。</p>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>バックアップ</h2>
+      <p class="hint">記録は、この端末の中にだけあります。機種変更や故障に備えて、月末にファイルへ書き出し、iCloud Driveなど端末の外にも保存してください。</p>
+      <div class="card">
+        <button type="button" class="ghost wide" id="backupOut">記録をファイルに書き出す</button>
+        <label class="ghost wide" for="backupIn" style="display:block;margin-top:8px;cursor:pointer">ファイルから読み込む</label>
+        <input id="backupIn" type="file" accept="application/json,.json" hidden>
+        <p class="note sub" id="backupMsg" role="status" aria-live="polite" style="margin-top:10px"></p>
+        <button type="button" class="ghost wide" id="backupApply" hidden>置き換えて読み込む</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 相談 -->
+  <div class="tabpanel" id="view-advice">
+    <section>
+      <h2>節約の相談</h2>
+      <p class="hint">今月の金額、内訳、メモ、学費を含めた見通しを、相談用の文章にまとめます。コピーして、Claudeのアプリに貼り付けて送ってください。この画面からは、どこにも送信されません。</p>
+      <div class="card">
+        <div class="field"><label for="adviceQ">聞きたいこと(空欄でも大丈夫です)</label><input id="adviceQ" type="text" maxlength="120" placeholder="例: 食費を月1万円減らすには?"></div>
+        <button type="button" class="primary" id="adviceCopy" style="margin-top:12px">相談用の文章をコピー</button>
+        <p class="status" id="adviceMsg" role="status" aria-live="polite"></p>
+        <div class="advice-out" id="advice" hidden style="user-select:all;-webkit-user-select:all"></div>
+        <p class="hint" style="margin:12px 0 0"><a href="https://claude.ai/" target="_blank" rel="noopener">Claudeを開く</a></p>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span id="where"></span>
+    <button type="button" class="ghost" id="export">この月をCSVで保存</button>
+  </footer>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var CATS = ['食費', '日用品', '交通', '住居・光熱', '通信', '教材・学費', '医療', '趣味・娯楽', '交際', '衣服・美容', 'その他'];
+  var CARD_CAT = 'カード';
+  var PAY_LABEL = { cash: '現金', card: 'カード' };
+  var MONTH_FIELDS = ['ppStart', 'ppCharge', 'ppEnd', 'stockPL'];
+  var DEFAULT_BUDGET = 200000;
+  var TUITION_HALF = 267900;
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  var yenFmt = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 });
+  var yen = { format: function (n) { return yenFmt.format(n).replace('\uFFE5', '\u00A5'); } };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var isNum = function (v) { return typeof v === 'number' && isFinite(v); };
+  function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + yen.format(Math.abs(n)); }
+  function money(n) { return (n < 0 ? '−' : '') + yen.format(Math.abs(n)); }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, armed: null, armedPlan: null, view: 'record' };
+  var adapter = null;
+  var armTimer = null, armPlanTimer = null;
+  var statusTimers = {};
+  var downloads = null;
+
+  function setStatus(msg, isErr, id) {
+    id = id || 'status';
+    var s = $(id);
+    s.textContent = msg || '';
+    s.className = 'status' + (isErr ? ' err' : '');
+    clearTimeout(statusTimers[id]);
+    if (msg && !isErr) statusTimers[id] = setTimeout(function () { s.textContent = ''; }, 3000);
+  }
+
+  function setView(v) {
+    S.view = v;
+    document.querySelectorAll('#views button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.view === v ? 'true' : 'false'); });
+    ['record', 'outlook', 'monthend', 'advice'].forEach(function (k) { $('view-' + k).className = 'tabpanel' + (k === v ? ' on' : ''); });
+  }
+
+  /* ---------- storage adapters ---------- */
+  function makeLocal() {
+    var KEY = 'kakeibo-v3';
+    var data = { tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null };
+    try {
+      var raw = localStorage.getItem(KEY) || localStorage.getItem('kakeibo-v2');
+      if (raw) data = Object.assign(data, JSON.parse(raw));
+    } catch (e) {}
+    if (!Array.isArray(data.tx)) data.tx = [];
+    if (!Array.isArray(data.plans)) data.plans = [];
+    if (!data.months) data.months = {};
+    if (!isNum(data.budget)) data.budget = DEFAULT_BUDGET;
+    var onTx = null, onProfile = null, onMonths = null, onPlans = null, month = null;
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} }
+    function emit() { if (onTx) onTx(data.tx.filter(function (t) { return t.month === month; })); }
+    function profile() { return { budget: data.budget, balance: isNum(data.balance) ? data.balance : null, balanceMonth: data.balanceMonth || null }; }
+    return {
+      label: 'この端末の中にだけ保存しています',
+      dump: function () { return JSON.parse(JSON.stringify(data)); },
+      restore: function (o) {
+        var txOk = function (t) { return t && typeof t.id === 'string' && typeof t.date === 'string' && typeof t.month === 'string' && isNum(t.amount) && typeof t.cat === 'string'; };
+        var plOk = function (p) { return p && typeof p.id === 'string' && typeof p.name === 'string' && typeof p.month === 'string' && isNum(p.amount); };
+        data = {
+          tx: o.tx.filter(txOk), plans: o.plans.filter(plOk),
+          months: (o.months && typeof o.months === 'object') ? o.months : {},
+          budget: isNum(o.budget) ? o.budget : DEFAULT_BUDGET,
+          balance: isNum(o.balance) ? o.balance : null,
+          balanceMonth: typeof o.balanceMonth === 'string' ? o.balanceMonth : null
+        };
+        save(); emit();
+        if (onProfile) onProfile(profile());
+        if (onMonths) onMonths(Object.assign({}, data.months));
+        if (onPlans) onPlans(data.plans.slice());
+      },
+      watchProfile: function (cb) { onProfile = cb; cb(profile()); },
+      watchMonths: function (cb) { onMonths = cb; cb(Object.assign({}, data.months)); },
+      watchPlans: function (cb) { onPlans = cb; cb(data.plans.slice()); },
+      watchMonth: function (m, cb) { month = m; onTx = cb; emit(); },
+      getMonth: function (m) { return Promise.resolve(data.tx.filter(function (t) { return t.month === m; })); },
+      add: function (t) { data.tx.push(t); save(); emit(); return Promise.resolve(); },
+      remove: function (id) { data.tx = data.tx.filter(function (t) { return t.id !== id; }); save(); emit(); return Promise.resolve(); },
+      setProfile: function (p) { data.budget = p.budget; data.balance = p.balance; data.balanceMonth = p.balanceMonth; save(); if (onProfile) onProfile(profile()); return Promise.resolve(); },
+      setMonthRec: function (m, rec) { data.months[m] = rec; save(); if (onMonths) onMonths(Object.assign({}, data.months)); return Promise.resolve(); },
+      addPlan: function (p) { data.plans.push(p); save(); if (onPlans) onPlans(data.plans.slice()); return Promise.resolve(); },
+      removePlan: function (id) { data.plans = data.plans.filter(function (p) { return p.id !== id; }); save(); if (onPlans) onPlans(data.plans.slice()); return Promise.resolve(); }
+    };
+  }
+
+  /* ---------- calculations ---------- */
+  function shiftMonth(m, delta) {
+    var y = Number(m.slice(0, 4)), mo = Number(m.slice(5)) - 1 + delta;
+    y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12;
+    return y + '-' + pad(mo + 1);
+  }
+  function payPayInfo(m) {
+    var r = S.months[m] || {}, prev = S.months[shiftMonth(m, -1)] || {};
+    var ownStart = isNum(r.ppStart);
+    var start = ownStart ? r.ppStart : (isNum(prev.ppEnd) ? prev.ppEnd : null);
+    var charge = isNum(r.ppCharge) ? r.ppCharge : 0;
+    var end = isNum(r.ppEnd) ? r.ppEnd : null;
+    var usage = (start != null && end != null) ? start + charge - end : null;
+    return { start: start, charge: charge, end: end, usage: usage, startFromPrev: !ownStart && isNum(prev.ppEnd), prevEnd: isNum(prev.ppEnd) ? prev.ppEnd : null };
+  }
+  function stockCumulative(m) {
+    var sum = 0, any = false;
+    Object.keys(S.months).forEach(function (k) {
+      if (k <= m && isNum(S.months[k].stockPL)) { sum += S.months[k].stockPL; any = true; }
+    });
+    return any ? sum : null;
+  }
+  function applies(p, m) {
+    if (!p.month) return false;
+    return p.repeat ? (m >= p.month && m.slice(5) === p.month.slice(5)) : p.month === m;
+  }
+  function plansIn(m) {
+    var s = 0;
+    S.plans.forEach(function (p) { if (applies(p, m)) s += p.amount; });
+    return s;
+  }
+  function forecastStart() { return S.balanceMonth || todayStr().slice(0, 7); }
+  function reserveAmount() {
+    var st = forecastStart(), sum = 0;
+    for (var i = 0; i < 12; i++) sum += plansIn(shiftMonth(st, i));
+    return Math.ceil(sum / 12);
+  }
+  // Balance after month k = B0 + (k-1)*income - k*L - (planned payments up to k).
+  function forecast(L) {
+    var B0 = S.balance;
+    if (!isNum(B0)) return null;
+    var st = forecastStart(), rows = [], cum = 0, lmax = Infinity, maxNeed0 = 0, firstNeg = null, minRow = null;
+    for (var k = 1; k <= 12; k++) {
+      var m = shiftMonth(st, k - 1), pl = plansIn(m);
+      cum += pl;
+      var bal = B0 + (k - 1) * S.budget - k * L - cum;
+      var row = { m: m, planned: pl, balance: bal };
+      rows.push(row);
+      lmax = Math.min(lmax, Math.floor((B0 + (k - 1) * S.budget - cum) / k));
+      maxNeed0 = Math.max(maxNeed0, cum - B0 - (k - 1) * S.budget);
+      if (bal < 0 && !firstNeg) firstNeg = row;
+      if (!minRow || bal < minRow.balance) minRow = row;
+    }
+    return { rows: rows, lmax: lmax, maxNeed0: maxNeed0, firstNeg: firstNeg, minRow: minRow };
+  }
+  function nextOccurrence(mm) {
+    var t = todayStr(), y = Number(t.slice(0, 4)), cur = Number(t.slice(5, 7));
+    return (cur <= mm ? y : y + 1) + '-' + pad(mm);
+  }
+
+  /* ---------- rendering ---------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function monthLabel(m) { return m.slice(0, 4) + '年' + Number(m.slice(5)) + '月'; }
+  function dayLabel(d) {
+    var dt = new Date(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+    return Number(d.slice(5, 7)) + '月' + Number(d.slice(8, 10)) + '日(' + WD[dt.getDay()] + ')';
+  }
+  function setIfIdle(id, v) {
+    var i = $(id);
+    if (document.activeElement !== i) i.value = (v == null) ? '' : v;
+  }
+
+  function drawChart(host, rows) {
+    host.textContent = '';
+    var NS = 'http://www.w3.org/2000/svg';
+    var W = 360, H = 176, top = 26, bottom = 40, side = 6, ph = H - top - bottom;
+    var vals = rows.map(function (r) { return r.balance; });
+    var ymax = Math.max.apply(null, vals.concat([0])), ymin = Math.min.apply(null, vals.concat([0]));
+    var range = (ymax - ymin) || 1;
+    var Y = function (v) { return top + (ymax - v) / range * ph; };
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('class', 'chart');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'これから12か月の、月末の残高の棒グラフ');
+    var slot = (W - side * 2) / rows.length, bw = slot * 0.62, y0 = Y(0), minIdx = 0;
+    rows.forEach(function (r, i) {
+      if (r.balance < rows[minIdx].balance) minIdx = i;
+      var x = side + i * slot + (slot - bw) / 2, yv = Y(r.balance);
+      var rect = document.createElementNS(NS, 'rect');
+      rect.setAttribute('x', x.toFixed(1)); rect.setAttribute('width', bw.toFixed(1));
+      rect.setAttribute('y', Math.min(yv, y0).toFixed(1)); rect.setAttribute('height', Math.max(1.5, Math.abs(yv - y0)).toFixed(1));
+      rect.setAttribute('rx', '3');
+      rect.setAttribute('class', r.balance < 0 ? 'neg' : 'pos');
+      svg.appendChild(rect);
+      var t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', (x + bw / 2).toFixed(1)); t.setAttribute('y', H - 8);
+      t.setAttribute('class', 'axis'); t.textContent = Number(r.m.slice(5)) + '月';
+      svg.appendChild(t);
+    });
+    var zero = document.createElementNS(NS, 'line');
+    zero.setAttribute('x1', side); zero.setAttribute('x2', W - side); zero.setAttribute('y1', y0.toFixed(1)); zero.setAttribute('y2', y0.toFixed(1));
+    zero.setAttribute('class', 'zero');
+    svg.appendChild(zero);
+    var mr = rows[minIdx], bx = side + minIdx * slot + slot / 2;
+    var mx = Math.max(38, Math.min(W - 38, bx));
+    if (mr.balance >= 0) {
+      var lead = document.createElementNS(NS, 'line');
+      lead.setAttribute('x1', bx.toFixed(1)); lead.setAttribute('x2', bx.toFixed(1));
+      lead.setAttribute('y1', (top - 6).toFixed(1)); lead.setAttribute('y2', (Y(mr.balance) - 3).toFixed(1));
+      lead.setAttribute('class', 'zero');
+      svg.appendChild(lead);
+    }
+    var lab = document.createElementNS(NS, 'text');
+    lab.setAttribute('x', mx.toFixed(1));
+    lab.setAttribute('y', (mr.balance < 0 ? Y(mr.balance) + 14 : top - 10).toFixed(1));
+    lab.setAttribute('class', 'vlabel');
+    lab.textContent = money(mr.balance);
+    svg.appendChild(lab);
+    host.appendChild(svg);
+  }
+
+  function render() {
+    $('monthLabel').textContent = monthLabel(S.month);
+
+    var cash = 0, card = 0, byCat = {};
+    S.tx.forEach(function (t) {
+      if (t.pay === 'card') card += t.amount; else cash += t.amount;
+      byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
+    });
+    var pp = payPayInfo(S.month);
+    var ppUsage = pp.usage;
+    var used = cash + card + (ppUsage || 0);
+    var reserve = reserveAmount();
+    var frame = S.budget - reserve;
+    var left = frame - used;
+    if (ppUsage != null) byCat['PayPay(月末の計算)'] = ppUsage;
+    var rec = S.months[S.month] || {};
+
+    // hero
+    var big = $('heroLeft');
+    big.textContent = money(left);
+    big.className = 'big num' + (left < 0 ? ' over' : '');
+    var meter = $('meter'), note = $('allowNote');
+    if (frame > 0) {
+      var ratio = used / frame;
+      $('heroCap').textContent = '枠 ' + yen.format(frame) + ' のうち、' + yen.format(used) + ' 使いました';
+      $('meterFill').style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+      meter.className = ratio > 1 ? 'meter over' : 'meter';
+      if (ratio > 1) { note.className = 'note over'; note.textContent = '今月の枠を ' + yen.format(used - frame) + ' 超えています。'; }
+      else { note.className = 'note'; note.textContent = '枠の範囲内です(使用 ' + Math.round(ratio * 100) + '%)'; }
+    } else {
+      $('heroCap').textContent = '';
+      $('meterFill').style.width = '0%'; meter.className = 'meter';
+      note.className = 'note over';
+      note.textContent = '奨学金より積立のほうが多くなっています。「見通し」で金額と予定を見直してください。';
+    }
+    $('stCash').textContent = yen.format(cash);
+    $('stCard').textContent = yen.format(card);
+    $('stPP').textContent = ppUsage != null ? yen.format(ppUsage) : '未計算';
+    $('heroSub').textContent = ppUsage == null ? 'PayPayは、月末の残高を入れると反映されます。' : '';
+
+    // allowance settings
+    setIfIdle('budget', S.budget);
+    $('reserve').textContent = yen.format(reserve);
+    $('frame').textContent = money(frame);
+
+    // forecast
+    setIfIdle('balance', S.balance);
+    var f = forecast(Math.max(0, frame));
+    var fn = $('fcNote'), fs = $('fcSub'), chip = $('outlookChip');
+    $('fcTable').textContent = '';
+    $('fcChart').textContent = '';
+    $('fcCaption').hidden = !f; $('fcDetails').hidden = !f;
+    if (!f) {
+      fn.className = 'note'; fn.textContent = '手元のお金を入れると、マイナスにならないかが分かります。';
+      fs.textContent = '';
+      chip.className = 'chip'; chip.textContent = '手元のお金を入れると、12か月の見通しが出ます';
+    } else {
+      if (!f.firstNeg) {
+        fn.className = 'note good';
+        fn.textContent = '今の枠(月 ' + yen.format(Math.max(0, frame)) + ')で暮らせば、12か月マイナスになりません。';
+        fs.textContent = '一番少なくなるのは ' + monthLabel(f.minRow.m) + ' の ' + money(f.minRow.balance) + ' です。マイナスにならない生活費の上限は、月 ' + yen.format(f.lmax) + ' です。';
+        chip.className = 'chip good'; chip.textContent = '12か月、マイナスにならない見通し';
+      } else {
+        fn.className = 'note over';
+        fn.textContent = monthLabel(f.firstNeg.m) + 'に ' + yen.format(-f.firstNeg.balance) + ' 足りなくなります。';
+        fs.textContent = f.lmax >= 0
+          ? '毎月の生活費を ' + yen.format(f.lmax) + ' 以下にすれば、マイナスを避けられます(今の枠は ' + yen.format(Math.max(0, frame)) + ')。'
+          : '生活費を0円にしても足りません。手元のお金があと ' + yen.format(Math.ceil(f.maxNeed0)) + ' 必要です。予定の支払いか、収入の見直しが必要です。';
+        chip.className = 'chip bad'; chip.textContent = monthLabel(f.firstNeg.m) + 'に ' + yen.format(-f.firstNeg.balance) + ' 不足する見通し';
+      }
+      drawChart($('fcChart'), f.rows);
+      var ft = $('fcTable');
+      var head = el('div', 'fc-row head');
+      head.appendChild(el('span', null, '月'));
+      head.appendChild(el('span', null, '予定の支払い'));
+      head.appendChild(el('span', 'bal', '月末の残高'));
+      ft.appendChild(head);
+      f.rows.forEach(function (r) {
+        var row = el('div', 'fc-row');
+        row.appendChild(el('span', null, monthLabel(r.m)));
+        var names = S.plans.filter(function (p) { return applies(p, r.m); }).map(function (p) { return p.name + ' ' + yen.format(p.amount); }).join('、');
+        row.appendChild(el('span', 'pl', names));
+        row.appendChild(el('span', 'bal num' + (r.balance < 0 ? ' neg' : ''), money(r.balance)));
+        ft.appendChild(row);
+      });
+    }
+
+    // plans
+    var pl = $('planList'); pl.textContent = '';
+    if (!S.plans.length) {
+      pl.appendChild(el('p', 'empty', 'まだ予定がありません。授業料は、下のボタンでまとめて入れられます。'));
+    } else {
+      S.plans.slice().sort(function (a, b) { return a.month < b.month ? -1 : a.month > b.month ? 1 : (a.id < b.id ? -1 : 1); }).forEach(function (p) {
+        var row = el('div', 'row');
+        var what = el('div', 'what');
+        what.appendChild(el('b', null, p.name));
+        what.appendChild(el('span', 'memo', monthLabel(p.month) + (p.repeat ? ' から、毎年' : '')));
+        row.appendChild(what);
+        row.appendChild(el('span', 'amt num', yen.format(p.amount)));
+        var del = el('button', 'ghost' + (S.armedPlan === p.id ? ' armed' : ''), S.armedPlan === p.id ? '本当に削除' : '削除');
+        del.type = 'button';
+        del.setAttribute('aria-label', p.name + ' を予定から削除');
+        del.addEventListener('click', function () { onDeletePlan(p.id); });
+        row.appendChild(del);
+        pl.appendChild(row);
+      });
+    }
+    $('addTuition').hidden = S.plans.some(function (p) { return /^授業料/.test(p.name); });
+
+    // month-end
+    setIfIdle('ppStart', isNum(rec.ppStart) ? rec.ppStart : null);
+    setIfIdle('ppCharge', isNum(rec.ppCharge) ? rec.ppCharge : null);
+    setIfIdle('ppEnd', isNum(rec.ppEnd) ? rec.ppEnd : null);
+    setIfIdle('stockPL', isNum(rec.stockPL) ? rec.stockPL : null);
+    $('ppStart').placeholder = pp.prevEnd != null ? '空欄なら前月末の ' + yen.format(pp.prevEnd) : '例: 5000';
+    if (ppUsage != null) {
+      $('ppCalc').textContent = '今月の利用額: ' + yen.format(ppUsage);
+      $('ppSub').textContent = yen.format(pp.start) + ' + チャージ ' + yen.format(pp.charge) + ' − 月末 ' + yen.format(pp.end) + (ppUsage < 0 ? '(マイナスは、受け取りなどで残高が増えた場合です)' : '');
+    } else {
+      $('ppCalc').textContent = '今月の利用額: まだ計算できません';
+      $('ppSub').textContent = pp.start == null ? '月初の残高と月末の残高を入れると計算します。' : '月末の残高を入れると計算します。';
+    }
+    $('stockMonth').textContent = isNum(rec.stockPL) ? '今月の損益: ' + signed(rec.stockPL) : '今月の損益: 未入力';
+    var cum = stockCumulative(S.month);
+    $('stockCalc').textContent = cum == null ? '損益を入れると、累計がここに出ます。' : 'ここまでの累計: ' + signed(cum);
+
+    // breakdown
+    var bd = $('breakdown'); bd.textContent = '';
+    var cats = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; });
+    if (!cats.length) bd.appendChild(el('p', 'empty', 'この月の記録はまだありません。'));
+    cats.forEach(function (c) {
+      var share = used > 0 ? Math.max(0, byCat[c]) / used : 0;
+      var row = el('div', 'cat');
+      row.appendChild(el('span', null, c));
+      var bar = el('div', 'bar'); var fill = document.createElement('i'); fill.style.width = Math.max(2, Math.round(share * 100)) + '%'; bar.appendChild(fill);
+      row.appendChild(bar);
+      var amt = el('span', 'amt num', yen.format(byCat[c]));
+      amt.appendChild(el('small', null, Math.round(share * 100) + '%'));
+      row.appendChild(amt);
+      bd.appendChild(row);
+    });
+
+    // list
+    var list = $('list'); list.textContent = '';
+    if (!S.tx.length) {
+      list.appendChild(el('p', 'empty', '現金で払ったときや、カードが引き落とされたときに、上のフォームから追加します。'));
+    } else {
+      var sorted = S.tx.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1); });
+      var curDay = null, group = null;
+      sorted.forEach(function (t) {
+        if (t.date !== curDay) {
+          curDay = t.date;
+          group = el('div', 'day');
+          group.appendChild(el('h3', null, dayLabel(t.date)));
+          list.appendChild(group);
+        }
+        var row = el('div', 'row');
+        var what = el('div', 'what');
+        what.appendChild(el('b', null, t.cat));
+        what.appendChild(el('span', 'tag', PAY_LABEL[t.pay] || '現金'));
+        if (t.memo) what.appendChild(el('span', 'memo', t.memo));
+        row.appendChild(what);
+        row.appendChild(el('span', 'amt num', '−' + yen.format(t.amount)));
+        var del = el('button', 'ghost' + (S.armed === t.id ? ' armed' : ''), S.armed === t.id ? '本当に削除' : '削除');
+        del.type = 'button';
+        del.setAttribute('aria-label', t.cat + ' ' + yen.format(t.amount) + ' を削除');
+        del.addEventListener('click', function () { onDelete(t.id); });
+        row.appendChild(del);
+        group.appendChild(row);
+      });
+    }
+  }
+
+  /* ---------- actions ---------- */
+  function onDelete(id) {
+    if (S.armed !== id) {
+      S.armed = id; render();
+      clearTimeout(armTimer);
+      armTimer = setTimeout(function () { S.armed = null; render(); }, 3500);
+      return;
+    }
+    S.armed = null; clearTimeout(armTimer);
+    adapter.remove(id).then(function () { setStatus('削除しました。'); })
+      .catch(function () { setStatus('削除できませんでした。もう一度試してください。', true); });
+    render();
+  }
+
+  function onDeletePlan(id) {
+    if (S.armedPlan !== id) {
+      S.armedPlan = id; render();
+      clearTimeout(armPlanTimer);
+      armPlanTimer = setTimeout(function () { S.armedPlan = null; render(); }, 3500);
+      return;
+    }
+    S.armedPlan = null; clearTimeout(armPlanTimer);
+    adapter.removePlan(id).then(function () { setStatus('予定を削除しました。', false, 'planStatus'); })
+      .catch(function () { setStatus('削除できませんでした。もう一度試してください。', true, 'planStatus'); });
+    render();
+  }
+
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function fillCats() {
+    var pay = $('pay').value;
+    var sel = $('cat'); sel.textContent = '';
+    (pay === 'card' ? [CARD_CAT] : CATS).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    $('memoLabel').textContent = pay === 'card' ? 'メモ(カード名など)' : 'メモ';
+    $('memo').placeholder = pay === 'card' ? '例: 楽天カード' : '例: 生協で昼食';
+  }
+
+  function defaultDate() {
+    var t = todayStr();
+    return t.slice(0, 7) === S.month ? t : S.month + '-01';
+  }
+
+  function goMonth(m) {
+    S.month = m; S.armed = null;
+    var d = $('date').value;
+    if (!d || d.slice(0, 7) !== m) $('date').value = defaultDate();
+    adapter.watchMonth(m, function (rows) { S.tx = rows; render(); });
+    render();
+  }
+
+  function saveMonthRec() {
+    var rec = {};
+    MONTH_FIELDS.forEach(function (id) {
+      var v = $(id).value;
+      if (v !== '' && isFinite(Number(v))) rec[id] = Math.round(Number(v));
+    });
+    var m = S.month;
+    S.months[m] = rec;
+    render();
+    adapter.setMonthRec(m, rec).catch(function () { setStatus('月末の記録を保存できませんでした。', true); });
+  }
+
+  function saveProfile() {
+    return adapter.setProfile({ budget: S.budget, balance: S.balance, balanceMonth: S.balanceMonth })
+      .catch(function () { setStatus('設定を保存できませんでした。もう一度試してください。', true); });
+  }
+
+  function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+  function exportCsv() {
+    var pp = payPayInfo(S.month), rec = S.months[S.month] || {};
+    if (!S.tx.length && pp.usage == null && !isNum(rec.stockPL)) { setStatus('この月にはまだ記録がありません。', true); return; }
+    var rows = [['日付', '区分', '支払い方法', 'カテゴリ', '金額', 'メモ']];
+    S.tx.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); })
+      .forEach(function (t) { rows.push([t.date, '支出', PAY_LABEL[t.pay] || '現金', t.cat, t.amount, t.memo]); });
+    if (pp.usage != null) rows.push([S.month, '月末計算', 'PayPay', 'PayPay利用額', pp.usage, '月初 ' + pp.start + ' + チャージ ' + pp.charge + ' − 月末 ' + pp.end]);
+    if (isNum(rec.stockPL)) rows.push([S.month, '月末記録', '楽天証券', '損益', rec.stockPL, '枠や見通しの計算には含めない']);
+    var csv = '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
+    saveFile('kakeibo-' + S.month + '.csv', csv, 'text/csv')
+      .then(function (r) { if (r !== 'cancelled') setStatus('保存しました。'); })
+      .catch(function () { setStatus('保存できませんでした。', true); });
+  }
+
+  /* ---------- Claude advice ---------- */
+  function sumRows(rows) {
+    var cash = 0, card = 0, byCat = {};
+    rows.forEach(function (t) {
+      if (t.pay === 'card') card += t.amount; else cash += t.amount;
+      byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
+    });
+    return { cash: cash, card: card, byCat: byCat, count: rows.length };
+  }
+
+  async function historyText() {
+    var lines = [];
+    for (var i = 1; i <= 2; i++) {
+      var m = shiftMonth(S.month, -i);
+      var rows = [];
+      try { rows = await adapter.getMonth(m); } catch (e) { rows = []; }
+      var s = sumRows(rows), pu = payPayInfo(m).usage;
+      if (!s.count && pu == null) { lines.push(monthLabel(m) + ': 記録なし'); continue; }
+      var top = Object.keys(s.byCat).sort(function (a, b) { return s.byCat[b] - s.byCat[a]; }).slice(0, 5)
+        .map(function (c) { return c + ' ' + s.byCat[c] + '円'; }).join('、');
+      lines.push(monthLabel(m) + ': 現金 ' + s.cash + '円 / カード引き落とし ' + s.card + '円 / PayPay ' + (pu != null ? pu + '円' : '未計算') +
+        ' / 合計 ' + (s.cash + s.card + (pu || 0)) + '円。カテゴリ上位: ' + (top || 'なし'));
+    }
+    return lines.join('\n');
+  }
+
+  function outlookText() {
+    var reserve = reserveAmount(), frame = S.budget - reserve;
+    var plans = S.plans.length
+      ? S.plans.map(function (p) { return '・' + p.name + ' ' + p.amount + '円(' + monthLabel(p.month) + (p.repeat ? ' から毎年' : '') + ')'; }).join('\n')
+      : '(予定の登録なし)';
+    var f = forecast(Math.max(0, frame)), res;
+    if (!f) res = '手元のお金が未入力のため、見通しは未計算。';
+    else if (!f.firstNeg) res = '今の枠で暮らせば12か月マイナスにならない。一番少ないのは' + monthLabel(f.minRow.m) + 'の' + Math.round(f.minRow.balance) + '円。生活費の上限は月' + f.lmax + '円。';
+    else res = monthLabel(f.firstNeg.m) + 'に' + Math.round(-f.firstNeg.balance) + '円不足する見込み。' + (f.lmax >= 0 ? '生活費を月' + f.lmax + '円以下にすれば避けられる。' : '生活費0円でも不足し、手元のお金があと' + Math.ceil(f.maxNeed0) + '円必要。');
+    return [
+      '毎月の奨学金: ' + S.budget + '円',
+      '学費などのための毎月の積立(自動計算): ' + reserve + '円',
+      '今月の生活費の枠: ' + frame + '円',
+      '手元のお金(奨学金が入ったあと): ' + (isNum(S.balance) ? S.balance + '円(' + monthLabel(forecastStart()) + 'の時点)' : '未入力'),
+      '学費・大きな支払いの予定:',
+      plans,
+      '12か月の見通し: ' + res
+    ].join('\n');
+  }
+
+  async function buildAdvicePrompt(question) {
+    var hist = await historyText();
+    var cur = sumRows(S.tx), byCat = cur.byCat;
+    var pp = payPayInfo(S.month);
+    var used = cur.cash + cur.card + (pp.usage || 0);
+    var frame = S.budget - reserveAmount();
+    var catLines = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; })
+      .map(function (c) { return '・' + c + ': ' + byCat[c] + '円'; }).join('\n') || '(まだ記録なし)';
+    var txLines = S.tx.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); })
+      .slice(-60).map(function (t) { return t.date + ' ' + (PAY_LABEL[t.pay] || '現金') + ' ' + t.cat + ' ' + t.amount + '円' + (t.memo ? '(' + t.memo + ')' : ''); }).join('\n') || '(まだ記録なし)';
+    var now = todayStr();
+    var dim = new Date(Number(S.month.slice(0, 4)), Number(S.month.slice(5)), 0).getDate();
+    var timing = now.slice(0, 7) === S.month
+      ? '今日は' + Number(now.slice(8)) + '日で、この月は' + dim + '日まであります(月末まであと' + (dim - Number(now.slice(8))) + '日)。'
+      : 'これは過去または先の月の記録です。';
+    return [
+      'あなたは、奨学金で暮らす学生の家計を一緒に見る相談相手です。本人にとって一番大事なのは、学費を含めてお金がマイナスにならないことです。次の記録を読んで、節約のアドバイスを日本語で書いてください。',
+      '',
+      '書き方のルール:',
+      '・やさしい口調で、責めない。見出しや太字などの記号は使わず、「・」の短い箇条書きを3〜5個にする。',
+      '・まず、学費や大きな支払いを含めた見通しで、マイナスになりそうかどうかを一言で伝える。',
+      '・一般的な節約術ではなく、下の記録に実際にある支出(カテゴリ、金額、メモ)を名指しして書く。',
+      '・前の月と比べて増えた・減ったカテゴリや、使うペースが速い点があれば指摘する。',
+      '・最後に、今日から1週間で試せる具体的な行動を1つ、節約できそうな金額の目安つきで書く(目安だと断る)。',
+      '・金額は、下のデータにある数字を使って具体的に書く。データに無いことは、推測だと断る。',
+      '・記録されているのは現金とカード引き落としだけで、PayPayは月末の残高から計算した合計だけ。カードは引き落とし額のみなので、中身の内訳は分からない。',
+      '・投資(楽天証券)の売買や商品の選び方は勧めない。',
+      '・記録がまだ少ないときは、そう伝えたうえで、記録のつけ方についてのアドバイスを中心にする。',
+      '',
+      '学費・見通し:',
+      outlookText(),
+      '',
+      '今月の記録:',
+      '対象の月: ' + monthLabel(S.month),
+      timing,
+      '現金: ' + cur.cash + '円 / カード引き落とし: ' + cur.card + '円 / PayPay: ' + (pp.usage != null ? pp.usage + '円' : 'まだ未計算'),
+      '使った合計: ' + used + '円(枠 ' + frame + '円に対して、残り ' + (frame - used) + '円)',
+      '',
+      'カテゴリ別(現金とカード引き落とし):',
+      catLines,
+      '',
+      '前の月の記録(比較用):',
+      hist,
+      '',
+      '記録の一覧(日付順、最大60件):',
+      txLines,
+      '',
+      question ? '本人からの質問: ' + question : '本人からの質問: なし(全体を見て、一番効きそうなことから教えてください)'
+    ].join('\n');
+  }
+
+  function saveFile(name, text, mime) {
+    function download() {
+      var url = URL.createObjectURL(new Blob([text], { type: mime }));
+      var a = document.createElement('a'); a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      return 'downloaded';
+    }
+    var file = null;
+    try { file = new File([text], name, { type: mime }); } catch (e) {}
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file], title: name }).then(function () { return 'shared'; })
+        .catch(function (e) { if (e && e.name === 'AbortError') return 'cancelled'; return download(); });
+    }
+    return Promise.resolve(download());
+  }
+
+  function bindBackup() {
+    var pending = null;
+    $('backupOut').addEventListener('click', function () {
+      var json = JSON.stringify({ app: 'kakeibo', version: 3, exportedAt: new Date().toISOString(), data: adapter.dump() }, null, 1);
+      saveFile('kakeibo-backup-' + todayStr() + '.json', json, 'application/json')
+        .then(function (r) { if (r !== 'cancelled') $('backupMsg').textContent = '書き出しました。iCloud Driveなど、この端末の外にも保存しておくと安心です。'; })
+        .catch(function () { $('backupMsg').textContent = '書き出せませんでした。'; });
+    });
+    $('backupIn').addEventListener('change', function () {
+      var f = $('backupIn').files[0];
+      $('backupIn').value = '';
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          var o = JSON.parse(String(r.result)), d = o && o.data;
+          if (!d || !Array.isArray(d.tx) || !Array.isArray(d.plans) || typeof d.months !== 'object') throw new Error('bad');
+          pending = d;
+          $('backupMsg').textContent = '記録 ' + d.tx.length + ' 件と、予定 ' + d.plans.length + ' 件が入っています。読み込むと、今の記録はすべて置き換わります。';
+          $('backupApply').hidden = false;
+        } catch (e) {
+          pending = null; $('backupApply').hidden = true;
+          $('backupMsg').textContent = 'このファイルは読み込めませんでした。このアプリで書き出したファイルを選んでください。';
+        }
+      };
+      r.onerror = function () { $('backupMsg').textContent = 'ファイルを開けませんでした。'; };
+      r.readAsText(f);
+    });
+    $('backupApply').addEventListener('click', function () {
+      if (!pending) return;
+      adapter.restore(pending); pending = null;
+      $('backupApply').hidden = true;
+      $('backupMsg').textContent = '読み込みました。';
+    });
+  }
+
+  function bindAdvice() {
+    $('adviceCopy').addEventListener('click', async function () {
+      var btn = $('adviceCopy'), msg = $('adviceMsg'), box = $('advice');
+      btn.disabled = true; msg.className = 'status'; msg.textContent = 'まとめています…';
+      var text = '';
+      try { text = await buildAdvicePrompt($('adviceQ').value.trim()); }
+      catch (e) { msg.className = 'status err'; msg.textContent = 'まとめられませんでした。'; btn.disabled = false; return; }
+      box.textContent = text;
+      try { await navigator.clipboard.writeText(text); box.hidden = true; msg.textContent = 'コピーしました。Claudeのアプリに貼り付けて送ってください。'; }
+      catch (e) { box.hidden = false; msg.textContent = 'コピーできませんでした。下の文章を長押しして、選んでコピーしてください。'; }
+      btn.disabled = false;
+    });
+  }
+
+  function bind() {
+    document.querySelectorAll('#views button').forEach(function (b) { b.addEventListener('click', function () { setView(b.dataset.view); }); });
+    $('outlookChip').addEventListener('click', function () { setView('outlook'); });
+    $('prev').addEventListener('click', function () { goMonth(shiftMonth(S.month, -1)); });
+    $('next').addEventListener('click', function () { goMonth(shiftMonth(S.month, 1)); });
+    $('pay').addEventListener('change', fillCats);
+
+    $('entry').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var amount = Math.round(Number($('amount').value));
+      var date = $('date').value;
+      if (!date) { setStatus('日付を入れてください。', true); return; }
+      if (!(amount > 0)) { setStatus('金額は1円以上で入れてください。', true); $('amount').focus(); return; }
+      var pay = $('pay').value;
+      var t = { id: newId(), date: date, month: date.slice(0, 7), pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
+      adapter.add(t).then(function () {
+        setStatus((pay === 'card' ? 'カード引き落としを' : '現金の支出を') + '追加しました。');
+      }).catch(function () { setStatus('保存できませんでした。もう一度試してください。', true); });
+      $('amount').value = ''; $('memo').value = '';
+      if (t.month !== S.month) goMonth(t.month);
+      $('amount').focus();
+    });
+
+    $('budget').addEventListener('change', function () {
+      S.budget = Math.max(0, Math.round(Number($('budget').value) || 0));
+      render(); saveProfile();
+    });
+    $('balance').addEventListener('change', function () {
+      var v = $('balance').value;
+      if (v === '' || !isFinite(Number(v))) { S.balance = null; S.balanceMonth = null; }
+      else { S.balance = Math.round(Number(v)); S.balanceMonth = todayStr().slice(0, 7); }
+      render(); saveProfile();
+    });
+
+    $('planForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var name = $('planName').value.trim();
+      var amount = Math.round(Number($('planAmount').value));
+      var month = $('planMonth').value;
+      if (!name) { setStatus('名前を入れてください。', true, 'planStatus'); return; }
+      if (!(amount > 0)) { setStatus('金額は1円以上で入れてください。', true, 'planStatus'); return; }
+      if (!/^\d{4}-\d{2}$/.test(month)) { setStatus('支払う月を選んでください。', true, 'planStatus'); return; }
+      adapter.addPlan({ id: newId(), name: name, amount: amount, month: month, repeat: $('planRepeat').checked })
+        .then(function () { setStatus('予定に追加しました。', false, 'planStatus'); })
+        .catch(function () { setStatus('保存できませんでした。もう一度試してください。', true, 'planStatus'); });
+      $('planName').value = ''; $('planAmount').value = ''; $('planRepeat').checked = false;
+    });
+
+    $('addTuition').addEventListener('click', function () {
+      var amount = Math.round(Number($('planAmount').value));
+      if (!(amount > 0)) { setStatus('先に、下の「金額」に半期分の授業料を入れてください。', true, 'planStatus'); $('planAmount').focus(); return; }
+      var items = [
+        { id: newId() + 'a', name: '授業料(後期)', amount: amount, month: nextOccurrence(11), repeat: true },
+        { id: newId() + 'b', name: '授業料(前期)', amount: amount, month: nextOccurrence(5), repeat: true }
+      ];
+      Promise.all(items.map(function (p) { return adapter.addPlan(p); }))
+        .then(function () { $('planAmount').value = ''; setStatus('授業料を予定に入れました。金額が変わる年は、入れ直してください。', false, 'planStatus'); })
+        .catch(function () { setStatus('保存できませんでした。もう一度試してください。', true, 'planStatus'); });
+    });
+
+    MONTH_FIELDS.forEach(function (id) { $(id).addEventListener('change', saveMonthRec); });
+    $('export').addEventListener('click', exportCsv);
+    bindBackup();
+    bindAdvice();
+  }
+
+  /* ---------- start ---------- */
+  function watchAll() {
+    adapter.watchProfile(function (p) { S.budget = p.budget; S.balance = p.balance; S.balanceMonth = p.balanceMonth; render(); });
+    adapter.watchMonths(function (o) { S.months = o; render(); });
+    adapter.watchPlans(function (list) { S.plans = list; render(); });
+    adapter.watchMonth(S.month, function (rows) { S.tx = rows; render(); });
+    $('where').textContent = adapter.label;
+  }
+
+  // Everything lives in this device's storage.
+  adapter = makeLocal();
+  fillCats();
+  $('date').value = defaultDate();
+  $('planMonth').value = S.month;
+  bind();
+  watchAll();
+  render();
+
+  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(function () {}); }
+  if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); }); }
+})();
+</script>
+</body>
+</html>
