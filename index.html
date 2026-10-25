@@ -159,6 +159,13 @@
   .seg button { border: 0; background: transparent; border-radius: 9px; padding: 8px 0; min-height: 40px; font-weight: 500; letter-spacing: 0.08em; color: var(--muted); cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; }
 
+  .linkbtn { border: 0; background: transparent; color: var(--accent); font-size: 13px; padding: 6px 0 0; text-align: left; cursor: pointer; min-height: 32px; }
+  .cathead { margin: 14px 0 6px; }
+  .cathead:first-child { margin-top: 0; }
+  .catrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .catadd { display: flex; gap: 8px; margin-top: 8px; }
+  .catadd input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; padding: 8px 10px; font-size: 16px; font-family: inherit; }
+  .catadd input:focus { border-color: var(--accent); outline: none; }
   .cat { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 0; font-size: 14px; }
   .cat .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
   .cat .bar i { display: block; height: 100%; background: var(--bar-pos); border-radius: 4px; }
@@ -257,7 +264,7 @@
     <p class="note" id="allowNote"></p>
     <div class="stats">
       <div><span>現金</span><strong class="num" id="stCash">¥0</strong></div>
-      <div><span>カード</span><strong class="num" id="stCard">¥0</strong></div>
+      <div><span>銀行引落</span><strong class="num" id="stCard">¥0</strong></div>
       <div><span>PayPay</span><strong class="num" id="stPP">未計算</strong></div>
     </div>
     <p class="subnote" id="heroSub"></p>
@@ -276,19 +283,25 @@
   <div class="tabpanel on" id="view-record">
     <section>
       <h2>出入りを記録</h2>
-      <p class="hint">現金は、払うたびに入れます。クレジットカードは、引き落とされた日に引き落とし額だけ入れます。アルバイト代などの収入は、「収入」に切り替えて入れます。授業料などの大きな支払いは「見通し」の予定に入れます。</p>
+      <p class="hint">現金は、払うたびに入れます。クレジットカードや家賃などの銀行引落は、引き落とされた日に引き落とし額だけ入れます。アルバイト代などの収入は、「収入」に切り替えて入れます。授業料などの大きな支払いは「見通し」の予定に入れます。</p>
       <form class="entry card" id="entry" autocomplete="off">
         <div class="full seg" id="typeSeg" role="group" aria-label="種別"><button type="button" data-type="out" aria-pressed="true">支出</button><button type="button" data-type="in" aria-pressed="false">収入</button></div>
         <div class="field"><label for="date">日付</label><input id="date" type="date" required></div>
         <div class="field"><label for="amount">金額(円)</label><input id="amount" class="num" type="number" inputmode="numeric" min="1" step="1" required placeholder="例: 680"></div>
         <div class="field" id="payField"><label for="pay">支払い方法</label>
-          <select id="pay"><option value="cash">現金</option><option value="card">カード引落</option></select>
+          <select id="pay"><option value="cash">現金</option><option value="card">銀行引落</option></select>
         </div>
-        <div class="field"><label for="cat">カテゴリ</label><select id="cat"></select></div>
+        <div class="field"><label for="cat">カテゴリ</label><select id="cat"></select><button type="button" class="linkbtn" id="catToggle" aria-expanded="false" aria-controls="catEditor">カテゴリを編集</button></div>
         <div class="field full"><label for="memo" id="memoLabel">メモ</label><input id="memo" type="text" maxlength="80" placeholder="例: 生協で昼食"></div>
         <div class="full"><button class="primary" type="submit" id="entrySubmit">追加する</button></div>
       </form>
       <p id="status" class="status" role="status" aria-live="polite"></p>
+      <div class="card" id="catEditor" hidden>
+        <p class="hint" style="margin-top:0">選べるカテゴリを、足したり減らしたりできます。名前を変えたいときは、新しい名前を足して、古いほうを削除します。削除しても、過去の記録は元の名前のまま残ります。</p>
+        <div id="catList"></div>
+        <p id="catStatus" class="status" role="status" aria-live="polite"></p>
+        <button type="button" class="ghost" id="catReset">最初のカテゴリに戻す</button>
+      </div>
     </section>
 
     <section>
@@ -306,7 +319,7 @@
   <div class="tabpanel" id="view-trend">
     <section>
       <h2>今月のペース</h2>
-      <p class="hint">太い線は、日ごとの使った金額の累計です(現金とカード引き落とし)。細い線は、使える額を月末まで均等に使ったときのペースです。使える額は、その月の枠から、PayPayの利用額(月末に入れた分)を引いた額です。</p>
+      <p class="hint">太い線は、日ごとの使った金額の累計です(現金と銀行引落)。細い線は、使える額を月末まで均等に使ったときのペースです。使える額は、その月の枠から、PayPayの利用額(月末に入れた分)を引いた額です。</p>
       <div class="card">
         <p class="note" id="paceSum" style="margin-bottom:12px"></p>
         <div class="legend"><span><i></i>使った金額</span><span><i class="muted"></i>使える額のペース</span></div>
@@ -316,7 +329,7 @@
     </section>
     <section>
       <h2>月ごとの使った金額</h2>
-      <p class="hint">棒は、現金・カード引き落とし・PayPayを合わせた使った金額です。黒い横線は、その月の枠(収入を足した額)です。選んでいる月は、濃い色で出ます。</p>
+      <p class="hint">棒は、現金・銀行引落・PayPayを合わせた使った金額です。黒い横線は、その月の枠(収入を足した額)です。選んでいる月は、濃い色で出ます。</p>
       <div class="card">
         <p class="note" id="monthsSum" style="margin-bottom:12px"></p>
         <div class="legend"><span><i class="sw"></i>使った金額</span><span><i class="tk"></i>その月の枠</span></div>
@@ -430,10 +443,10 @@
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var CATS = ['食費', '日用品', '交通', '住居・光熱', '通信', '教材・学費', '医療', '趣味・娯楽', '交際', '衣服・美容', 'その他'];
+  var DEF_CATS = ['食費', '日用品', '交通', '住居・光熱', '通信', '教材・学費', '医療', '趣味・娯楽', '交際', '衣服・美容', 'その他'];
   var CARD_CAT = 'カード';
-  var INCOME_CATS = ['アルバイト', '仕送り', '臨時収入', 'その他'];
-  var PAY_LABEL = { cash: '現金', card: 'カード' };
+  var DEF_INCOME = ['アルバイト', '仕送り', '臨時収入', 'その他'];
+  var PAY_LABEL = { cash: '現金', card: '銀行引落' };
   var MONTH_FIELDS = ['ppStart', 'ppCharge', 'ppEnd', 'stockPL'];
   var DEFAULT_BUDGET = 200000;
   var TUITION_HALF = 267900;
@@ -446,7 +459,7 @@
   function money(n) { return (n < 0 ? '−' : '') + yen.format(Math.abs(n)); }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
-  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, armed: null, armedPlan: null, view: 'record', entryType: 'out', trendToken: 0 };
+  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, catsOut: DEF_CATS.slice(), catsIn: DEF_INCOME.slice(), armed: null, armedPlan: null, view: 'record', entryType: 'out', trendToken: 0 };
   var adapter = null;
   var armTimer = null, armPlanTimer = null;
   var statusTimers = {};
@@ -471,7 +484,7 @@
   /* ---------- storage adapters ---------- */
   function makeLocal() {
     var KEY = 'kakeibo-v3';
-    var data = { tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null };
+    var data = { tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, catsOut: null, catsIn: null };
     try {
       var raw = localStorage.getItem(KEY) || localStorage.getItem('kakeibo-v2');
       if (raw) data = Object.assign(data, JSON.parse(raw));
@@ -483,7 +496,7 @@
     var onTx = null, onProfile = null, onMonths = null, onPlans = null, month = null;
     function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} }
     function emit() { if (onTx) onTx(data.tx.filter(function (t) { return t.month === month; })); }
-    function profile() { return { budget: data.budget, balance: isNum(data.balance) ? data.balance : null, balanceMonth: data.balanceMonth || null }; }
+    function profile() { return { budget: data.budget, balance: isNum(data.balance) ? data.balance : null, balanceMonth: data.balanceMonth || null, catsOut: data.catsOut || null, catsIn: data.catsIn || null }; }
     return {
       label: 'この端末の中にだけ保存しています',
       dump: function () { return JSON.parse(JSON.stringify(data)); },
@@ -495,7 +508,8 @@
           months: (o.months && typeof o.months === 'object') ? o.months : {},
           budget: isNum(o.budget) ? o.budget : DEFAULT_BUDGET,
           balance: isNum(o.balance) ? o.balance : null,
-          balanceMonth: typeof o.balanceMonth === 'string' ? o.balanceMonth : null
+          balanceMonth: typeof o.balanceMonth === 'string' ? o.balanceMonth : null,
+          catsOut: cleanList(o.catsOut), catsIn: cleanList(o.catsIn)
         };
         save(); emit();
         if (onProfile) onProfile(profile());
@@ -509,7 +523,7 @@
       getMonth: function (m) { return Promise.resolve(data.tx.filter(function (t) { return t.month === m; })); },
       add: function (t) { data.tx.push(t); save(); emit(); return Promise.resolve(); },
       remove: function (id) { data.tx = data.tx.filter(function (t) { return t.id !== id; }); save(); emit(); return Promise.resolve(); },
-      setProfile: function (p) { data.budget = p.budget; data.balance = p.balance; data.balanceMonth = p.balanceMonth; save(); if (onProfile) onProfile(profile()); return Promise.resolve(); },
+      setProfile: function (p) { data.budget = p.budget; data.balance = p.balance; data.balanceMonth = p.balanceMonth; data.catsOut = p.catsOut || null; data.catsIn = p.catsIn || null; save(); if (onProfile) onProfile(profile()); return Promise.resolve(); },
       setMonthRec: function (m, rec) { data.months[m] = rec; save(); if (onMonths) onMonths(Object.assign({}, data.months)); return Promise.resolve(); },
       addPlan: function (p) { data.plans.push(p); save(); if (onPlans) onPlans(data.plans.slice()); return Promise.resolve(); },
       removePlan: function (id) { data.plans = data.plans.filter(function (p) { return p.id !== id; }); save(); if (onPlans) onPlans(data.plans.slice()); return Promise.resolve(); }
@@ -792,7 +806,7 @@
     // list
     var list = $('list'); list.textContent = '';
     if (!S.tx.length) {
-      list.appendChild(el('p', 'empty', '現金で払ったときや、カードが引き落とされたときに、上のフォームから追加します。'));
+      list.appendChild(el('p', 'empty', '現金で払ったときや、銀行から引き落とされたときに、上のフォームから追加します。'));
     } else {
       var sorted = S.tx.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1); });
       var curDay = null, group = null;
@@ -1064,16 +1078,66 @@
     render();
   }
 
+  /* ---------- category editor ---------- */
+  function cleanList(a) {
+    if (!Array.isArray(a)) return null;
+    var out = [];
+    a.forEach(function (x) { if (typeof x === 'string') { x = x.trim(); if (x && x.length <= 20 && out.indexOf(x) < 0) out.push(x); } });
+    return out.length ? out : null;
+  }
+  function catsChanged() { fillCats(); renderCatEditor(); saveProfile(); }
+  function addCat(type, name) {
+    name = String(name || '').trim();
+    var list = type === 'in' ? S.catsIn : S.catsOut;
+    if (!name) return;
+    if (list.indexOf(name) >= 0) { setStatus('同じ名前がすでにあります。', true, 'catStatus'); return; }
+    if (list.length >= 30) { setStatus('カテゴリは30個までです。', true, 'catStatus'); return; }
+    list.push(name); catsChanged();
+    setStatus('「' + name + '」を追加しました。', false, 'catStatus');
+  }
+  function removeCat(type, name) {
+    var list = type === 'in' ? S.catsIn : S.catsOut;
+    if (list.length <= 1) { setStatus('カテゴリは最低1つ必要です。', true, 'catStatus'); return; }
+    var next = list.filter(function (c) { return c !== name; });
+    if (type === 'in') S.catsIn = next; else S.catsOut = next;
+    catsChanged();
+    setStatus('「' + name + '」を選べないようにしました。過去の記録はそのまま残ります。', false, 'catStatus');
+  }
+  function renderCatEditor() {
+    var box = $('catList'); if (!box) return;
+    box.textContent = '';
+    [['out', '支出のカテゴリ'], ['in', '収入のカテゴリ']].forEach(function (g) {
+      var type = g[0], list = type === 'in' ? S.catsIn : S.catsOut;
+      box.appendChild(el('h3', 'cathead', g[1]));
+      var wrap = el('div', 'catrows');
+      list.forEach(function (c) {
+        var row = el('div', 'catrow');
+        row.appendChild(el('span', null, c));
+        var b = el('button', 'ghost', '削除'); b.type = 'button'; b.setAttribute('aria-label', c + ' を削除');
+        b.addEventListener('click', function () { removeCat(type, c); });
+        row.appendChild(b); wrap.appendChild(row);
+      });
+      box.appendChild(wrap);
+      var add = el('div', 'catadd');
+      var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 12; inp.placeholder = '新しいカテゴリ名'; inp.setAttribute('aria-label', g[1] + 'に追加する名前');
+      var ab = el('button', 'ghost', '追加'); ab.type = 'button';
+      var go = function () { addCat(type, inp.value); };
+      ab.addEventListener('click', go);
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+      add.appendChild(inp); add.appendChild(ab); box.appendChild(add);
+    });
+  }
+
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   function fillCats() {
     var inc = S.entryType === 'in';
     var pay = $('pay').value;
     var sel = $('cat'); sel.textContent = '';
-    (inc ? INCOME_CATS : pay === 'card' ? [CARD_CAT] : CATS).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    (inc ? S.catsIn : pay === 'card' ? [CARD_CAT].concat(S.catsOut.filter(function (c) { return c !== CARD_CAT; })) : S.catsOut).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
     $('payField').hidden = inc;
-    $('memoLabel').textContent = inc ? 'メモ(入金元など)' : pay === 'card' ? 'メモ(カード名など)' : 'メモ';
-    $('memo').placeholder = inc ? '例: 10月分のバイト代' : pay === 'card' ? '例: 楽天カード' : '例: 生協で昼食';
+    $('memoLabel').textContent = inc ? 'メモ(入金元など)' : pay === 'card' ? 'メモ(カード名・家賃など)' : 'メモ';
+    $('memo').placeholder = inc ? '例: 10月分のバイト代' : pay === 'card' ? '例: 楽天カード、家賃' : '例: 生協で昼食';
     $('entrySubmit').textContent = inc ? '収入を追加する' : '追加する';
     document.querySelectorAll('#typeSeg button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.type === S.entryType ? 'true' : 'false'); });
   }
@@ -1104,7 +1168,7 @@
   }
 
   function saveProfile() {
-    return adapter.setProfile({ budget: S.budget, balance: S.balance, balanceMonth: S.balanceMonth })
+    return adapter.setProfile({ budget: S.budget, balance: S.balance, balanceMonth: S.balanceMonth, catsOut: S.catsOut.slice(), catsIn: S.catsIn.slice() })
       .catch(function () { setStatus('設定を保存できませんでした。もう一度試してください。', true); });
   }
 
@@ -1146,7 +1210,7 @@
       if (!s.count && pu == null) { lines.push(monthLabel(m) + ': 記録なし'); continue; }
       var top = Object.keys(s.byCat).sort(function (a, b) { return s.byCat[b] - s.byCat[a]; }).slice(0, 5)
         .map(function (c) { return c + ' ' + s.byCat[c] + '円'; }).join('、');
-      lines.push(monthLabel(m) + ': 現金 ' + s.cash + '円 / カード引き落とし ' + s.card + '円 / PayPay ' + (pu != null ? pu + '円' : '未計算') +
+      lines.push(monthLabel(m) + ': 現金 ' + s.cash + '円 / 銀行引落 ' + s.card + '円 / PayPay ' + (pu != null ? pu + '円' : '未計算') +
         ' / 合計 ' + (s.cash + s.card + (pu || 0)) + '円。カテゴリ上位: ' + (top || 'なし'));
     }
     return lines.join('\n');
@@ -1197,7 +1261,7 @@
       '・前の月と比べて増えた・減ったカテゴリや、使うペースが速い点があれば指摘する。',
       '・最後に、今日から1週間で試せる具体的な行動を1つ、節約できそうな金額の目安つきで書く(目安だと断る)。',
       '・金額は、下のデータにある数字を使って具体的に書く。データに無いことは、推測だと断る。',
-      '・記録されているのは現金とカード引き落としだけで、PayPayは月末の残高から計算した合計だけ。カードは引き落とし額のみなので、中身の内訳は分からない。',
+      '・記録されているのは現金と銀行引落だけで、PayPayは月末の残高から計算した合計だけ。銀行引落は引き落とし額のみなので、中身の内訳は分からない。',
       '・投資(楽天証券)の売買や商品の選び方は勧めない。',
       '・収入(アルバイト代など)がある月は、枠に足して考える。収入に頼った提案はしない。',
       '・記録がまだ少ないときは、そう伝えたうえで、記録のつけ方についてのアドバイスを中心にする。',
@@ -1208,11 +1272,11 @@
       '今月の記録:',
       '対象の月: ' + monthLabel(S.month),
       timing,
-      '現金: ' + cur.cash + '円 / カード引き落とし: ' + cur.card + '円 / PayPay: ' + (pp.usage != null ? pp.usage + '円' : 'まだ未計算'),
+      '現金: ' + cur.cash + '円 / 銀行引落: ' + cur.card + '円 / PayPay: ' + (pp.usage != null ? pp.usage + '円' : 'まだ未計算'),
       '今月の収入(奨学金以外): ' + cur.income + '円(枠に足している)',
       '使った合計: ' + used + '円(枠 ' + frame + '円に対して、残り ' + (frame - used) + '円)',
       '',
-      'カテゴリ別(現金とカード引き落とし):',
+      'カテゴリ別(現金と銀行引落):',
       catLines,
       '',
       '前の月の記録(比較用):',
@@ -1310,7 +1374,7 @@
       var pay = isIn ? 'in' : $('pay').value;
       var t = { id: newId(), date: date, month: date.slice(0, 7), type: isIn ? 'in' : 'out', pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
       adapter.add(t).then(function () {
-        setStatus(isIn ? '収入を追加しました。' : (pay === 'card' ? 'カード引き落としを' : '現金の支出を') + '追加しました。');
+        setStatus(isIn ? '収入を追加しました。' : (pay === 'card' ? '銀行引落を' : '現金の支出を') + '追加しました。');
       }).catch(function () { setStatus('保存できませんでした。もう一度試してください。', true); });
       $('amount').value = ''; $('memo').value = '';
       if (t.month !== S.month) goMonth(t.month);
@@ -1362,7 +1426,7 @@
 
   /* ---------- start ---------- */
   function watchAll() {
-    adapter.watchProfile(function (p) { S.budget = p.budget; S.balance = p.balance; S.balanceMonth = p.balanceMonth; render(); });
+    adapter.watchProfile(function (p) { S.budget = p.budget; S.balance = p.balance; S.balanceMonth = p.balanceMonth; S.catsOut = cleanList(p.catsOut) || DEF_CATS.slice(); S.catsIn = cleanList(p.catsIn) || DEF_INCOME.slice(); fillCats(); renderCatEditor(); render(); });
     adapter.watchMonths(function (o) { S.months = o; render(); });
     adapter.watchPlans(function (list) { S.plans = list; render(); });
     adapter.watchMonth(S.month, function (rows) { S.tx = rows; render(); });
@@ -1371,6 +1435,16 @@
 
   // Everything lives in this device's storage.
   adapter = makeLocal();
+  $('catToggle').addEventListener('click', function () {
+    var box = $('catEditor'), open = box.hidden;
+    box.hidden = !open; this.setAttribute('aria-expanded', open ? 'true' : 'false');
+    this.textContent = open ? 'カテゴリの編集を閉じる' : 'カテゴリを編集';
+    if (open) renderCatEditor();
+  });
+  $('catReset').addEventListener('click', function () {
+    S.catsOut = DEF_CATS.slice(); S.catsIn = DEF_INCOME.slice(); catsChanged();
+    setStatus('最初のカテゴリに戻しました。', false, 'catStatus');
+  });
   fillCats();
   $('date').value = defaultDate();
   $('planMonth').value = S.month;
