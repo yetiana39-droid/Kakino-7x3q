@@ -149,7 +149,9 @@
   .day:first-child { margin-top: 0; }
   .day h3 { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.1em; margin: 0 0 2px; }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row .acts { display: flex; gap: 6px; }
   .row .what { min-width: 0; }
+  .editing-banner { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--field); font-size: 13px; color: var(--fg); }
   .row .what b { font-weight: 500; }
   .row .tag { display: inline-block; margin-left: 8px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; font-size: 11px; color: var(--muted); }
   .row .what span.memo { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
@@ -293,7 +295,7 @@
         </div>
         <div class="field"><label for="cat">カテゴリ</label><select id="cat"></select><button type="button" class="linkbtn" id="catToggle" aria-expanded="false" aria-controls="catEditor">カテゴリを編集</button></div>
         <div class="field full"><label for="memo" id="memoLabel">メモ</label><input id="memo" type="text" maxlength="80" placeholder="例: 生協で昼食"></div>
-        <div class="full"><button class="primary" type="submit" id="entrySubmit">追加する</button></div>
+        <div class="full"><p class="editing-banner" id="editBanner" hidden>記録を編集しています。直したら「変更を保存」を押してください。</p><button class="primary" type="submit" id="entrySubmit">追加する</button><button type="button" class="linkbtn" id="entryCancel" hidden>編集をやめる</button></div>
       </form>
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <div class="card" id="catEditor" hidden>
@@ -459,7 +461,7 @@
   function money(n) { return (n < 0 ? '−' : '') + yen.format(Math.abs(n)); }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
-  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, catsOut: DEF_CATS.slice(), catsIn: DEF_INCOME.slice(), armed: null, armedPlan: null, view: 'record', entryType: 'out', trendToken: 0 };
+  var S = { month: todayStr().slice(0, 7), tx: [], months: {}, plans: [], budget: DEFAULT_BUDGET, balance: null, balanceMonth: null, catsOut: DEF_CATS.slice(), catsIn: DEF_INCOME.slice(), armed: null, armedPlan: null, editId: null, view: 'record', entryType: 'out', trendToken: 0 };
   var adapter = null;
   var armTimer = null, armPlanTimer = null;
   var statusTimers = {};
@@ -521,7 +523,7 @@
       watchPlans: function (cb) { onPlans = cb; cb(data.plans.slice()); },
       watchMonth: function (m, cb) { month = m; onTx = cb; emit(); },
       getMonth: function (m) { return Promise.resolve(data.tx.filter(function (t) { return t.month === m; })); },
-      add: function (t) { data.tx.push(t); save(); emit(); return Promise.resolve(); },
+      add: function (t) { data.tx = data.tx.filter(function (x) { return x.id !== t.id; }); data.tx.push(t); save(); emit(); return Promise.resolve(); },
       remove: function (id) { data.tx = data.tx.filter(function (t) { return t.id !== id; }); save(); emit(); return Promise.resolve(); },
       setProfile: function (p) { data.budget = p.budget; data.balance = p.balance; data.balanceMonth = p.balanceMonth; data.catsOut = p.catsOut || null; data.catsIn = p.catsIn || null; save(); if (onProfile) onProfile(profile()); return Promise.resolve(); },
       setMonthRec: function (m, rec) { data.months[m] = rec; save(); if (onMonths) onMonths(Object.assign({}, data.months)); return Promise.resolve(); },
@@ -824,11 +826,18 @@
         if (t.memo) what.appendChild(el('span', 'memo', t.memo));
         row.appendChild(what);
         row.appendChild(t.type === 'in' ? el('span', 'amt num in', '+' + yen.format(t.amount)) : el('span', 'amt num', '−' + yen.format(t.amount)));
+        var acts = el('span', 'acts');
+        var ed = el('button', 'ghost', S.editId === t.id ? '編集中' : '編集');
+        ed.type = 'button';
+        ed.setAttribute('aria-label', t.cat + ' ' + yen.format(t.amount) + ' を編集');
+        ed.addEventListener('click', function () { startEdit(t); });
+        acts.appendChild(ed);
         var del = el('button', 'ghost' + (S.armed === t.id ? ' armed' : ''), S.armed === t.id ? '本当に削除' : '削除');
         del.type = 'button';
         del.setAttribute('aria-label', t.cat + ' ' + yen.format(t.amount) + ' を削除');
         del.addEventListener('click', function () { onDelete(t.id); });
-        row.appendChild(del);
+        acts.appendChild(del);
+        row.appendChild(acts);
         group.appendChild(row);
       });
     }
@@ -1060,6 +1069,7 @@
       return;
     }
     S.armed = null; clearTimeout(armTimer);
+    if (S.editId === id) cancelEdit();
     adapter.remove(id).then(function () { setStatus('削除しました。'); })
       .catch(function () { setStatus('削除できませんでした。もう一度試してください。', true); });
     render();
@@ -1128,6 +1138,25 @@
     });
   }
 
+  function startEdit(t) {
+    S.editId = t.id;
+    S.entryType = t.type === 'in' ? 'in' : 'out';
+    if (S.entryType === 'out') $('pay').value = t.pay === 'card' ? 'card' : 'cash';
+    fillCats();
+    var sel = $('cat');
+    if (Array.prototype.every.call(sel.options, function (o) { return o.value !== t.cat; })) {
+      var o = document.createElement('option'); o.value = t.cat; o.textContent = t.cat; sel.appendChild(o);
+    }
+    sel.value = t.cat;
+    $('date').value = t.date; $('amount').value = t.amount; $('memo').value = t.memo || '';
+    render();
+    $('entry').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function cancelEdit() {
+    S.editId = null; $('amount').value = ''; $('memo').value = '';
+    fillCats(); render();
+  }
+
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   function fillCats() {
@@ -1138,7 +1167,8 @@
     $('payField').hidden = inc;
     $('memoLabel').textContent = inc ? 'メモ(入金元など)' : pay === 'card' ? 'メモ(カード名・家賃など)' : 'メモ';
     $('memo').placeholder = inc ? '例: 10月分のバイト代' : pay === 'card' ? '例: 楽天カード、家賃' : '例: 生協で昼食';
-    $('entrySubmit').textContent = inc ? '収入を追加する' : '追加する';
+    $('entrySubmit').textContent = S.editId ? '変更を保存' : inc ? '収入を追加する' : '追加する';
+    $('editBanner').hidden = !S.editId; $('entryCancel').hidden = !S.editId;
     document.querySelectorAll('#typeSeg button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.type === S.entryType ? 'true' : 'false'); });
   }
 
@@ -1372,11 +1402,13 @@
       if (!(amount > 0)) { setStatus('金額は1円以上で入れてください。', true); $('amount').focus(); return; }
       var isIn = S.entryType === 'in';
       var pay = isIn ? 'in' : $('pay').value;
-      var t = { id: newId(), date: date, month: date.slice(0, 7), type: isIn ? 'in' : 'out', pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
+      var wasEdit = !!S.editId;
+      var t = { id: S.editId || newId(), date: date, month: date.slice(0, 7), type: isIn ? 'in' : 'out', pay: pay, amount: amount, cat: $('cat').value, memo: $('memo').value.trim() };
       adapter.add(t).then(function () {
-        setStatus(isIn ? '収入を追加しました。' : (pay === 'card' ? '銀行引落を' : '現金の支出を') + '追加しました。');
+        setStatus(wasEdit ? '変更を保存しました。' : isIn ? '収入を追加しました。' : (pay === 'card' ? '銀行引落を' : '現金の支出を') + '追加しました。');
       }).catch(function () { setStatus('保存できませんでした。もう一度試してください。', true); });
       $('amount').value = ''; $('memo').value = '';
+      if (wasEdit) { S.editId = null; fillCats(); render(); }
       if (t.month !== S.month) goMonth(t.month);
       $('amount').focus();
     });
@@ -1435,6 +1467,7 @@
 
   // Everything lives in this device's storage.
   adapter = makeLocal();
+  $('entryCancel').addEventListener('click', cancelEdit);
   $('catToggle').addEventListener('click', function () {
     var box = $('catEditor'), open = box.hidden;
     box.hidden = !open; this.setAttribute('aria-expanded', open ? 'true' : 'false');
